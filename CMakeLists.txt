@@ -14,6 +14,8 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Sql)
 
 set(PROJECT_SOURCES
         main.cpp
+        database.cpp
+        database.h
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui

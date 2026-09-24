@@ -1,6 +1,6 @@
 #include "logindialog.h"
+#include "database.h"
 #include "ui_logindialog.h"
-#include <QCryptographicHash>
 #include <QMessageBox>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -38,16 +38,12 @@ void LoginDialog::on_btnCancelar_clicked() {
 
 bool LoginDialog::validarCredenciales(const QString &usuario,
                                       const QString &password) {
-  // Hashear la contraseña antes de comparar
-  QByteArray hash =
-      QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256)
-          .toHex();
-
+  // Hashear la contraseña antes de comparar (algoritmo compartido)
   QSqlQuery query;
   query.prepare("SELECT id FROM usuarios "
                 "WHERE usuario = :u AND password = :p");
   query.bindValue(":u", usuario);
-  query.bindValue(":p", QString(hash));
+  query.bindValue(":p", hashPassword(password));
 
   if (!query.exec()) {
     QMessageBox::critical(this, "Error de BD", query.lastError().text());
