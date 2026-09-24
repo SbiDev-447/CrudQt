@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "admindialog.h"
 #include "studentdialog.h"
 #include "ui_mainwindow.h"
 
@@ -81,10 +82,8 @@ void MainWindow::on_btnEditar_clicked() {
 }
 
 void MainWindow::on_btnAdministradores_clicked() {
-  // Integrado en la etapa de gestión de administradores.
-  QMessageBox::information(this, "Administradores",
-                           "La gestión de administradores se integrará en la "
-                           "siguiente etapa.");
+  AdminDialog dialogo(this);
+  dialogo.exec();
 }
 
 void MainWindow::on_btnRefrescar_clicked() { refrescarTabla(); }
