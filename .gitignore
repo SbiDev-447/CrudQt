@@ -1,4 +1,7 @@
+odd/
+.atl/
 # --- Build directories de Qt Creator / CMake ---
+
 build/
 build-*/
 *-build-*/
