@@ -1,0 +1,42 @@
+# --- Build directories de Qt Creator / CMake ---
+build/
+build-*/
+*-build-*/
+
+# --- Archivos de CMake ---
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake.user
+compile_commands.json
+
+# --- Qt Creator ---
+*.user
+*.user.*
+CMakeLists.txt.user*
+.qmake.stash
+
+# --- Binarios y librerías compiladas ---
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.dylib
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+
+# --- Base de datos SQLite (¡no subir tu .db!) ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Editores ---
+.vscode/
+.idea/
+*.swp
+*~
