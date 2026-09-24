@@ -43,8 +43,23 @@ MainWindow::MainWindow(QWidget *parent)
   ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
   ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
   ui->tableView->setAlternatingRowColors(true);
-  ui->tableView->horizontalHeader()->setStretchLastSection(true);
   ui->tableView->verticalHeader()->setVisible(false);
+
+  // Las columnas reparten el ancho disponible sin huecos muertos: nombre,
+  // apellido, cédula y sección estiran; ID y calificación conservan su ancho
+  // natural; trayecto/tramo quedan en tamaño razonable (ajustable).
+  QHeaderView *header = ui->tableView->horizontalHeader();
+  header->setStretchLastSection(false);
+  header->setSectionResizeMode(0, QHeaderView::ResizeToContents); // ID
+  header->setSectionResizeMode(1, QHeaderView::Stretch);          // Nombre
+  header->setSectionResizeMode(2, QHeaderView::Stretch);          // Apellido
+  header->setSectionResizeMode(3, QHeaderView::Stretch);          // Cédula
+  header->setSectionResizeMode(4, QHeaderView::Interactive);      // Trayecto
+  header->setSectionResizeMode(5, QHeaderView::Interactive);      // Tramo
+  header->setSectionResizeMode(6, QHeaderView::Stretch);          // Sección
+  header->setSectionResizeMode(7, QHeaderView::ResizeToContents); // Calificación
+  header->resizeSection(4, 110); // ancho inicial razonable de Trayecto
+  header->resizeSection(5, 80);  // ancho inicial razonable de Tramo
 
   connect(ui->tableView, &QTableView::doubleClicked, this,
           &MainWindow::editarFila);
@@ -59,7 +74,8 @@ void MainWindow::refrescarTabla() {
     QMessageBox::critical(this, "Error de BD", m_model->lastError().text());
     return;
   }
-  ui->tableView->resizeColumnsToContents();
+  // El header ya reparte el ancho por sección (Stretch/Interactive); no se
+  // re-escalan las columnas al refrescar para no anular ese reparto.
   statusBar()->showMessage(
       QStringLiteral("Estudiantes: %1").arg(m_model->rowCount()));
 }
