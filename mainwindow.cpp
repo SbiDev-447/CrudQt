@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "studentdialog.h"
 #include "ui_mainwindow.h"
 
 #include <QHeaderView>
@@ -63,17 +64,20 @@ void MainWindow::refrescarTabla() {
 }
 
 void MainWindow::on_btnAgregar_clicked() {
-  // Integrado en la etapa del diálogo de estudiantes.
-  QMessageBox::information(this, "Agregar estudiante",
-                           "El diálogo de estudiantes se integrará en la "
-                           "siguiente etapa.");
+  StudentDialog dialogo(this);
+  if (dialogo.exec() == QDialog::Accepted) {
+    refrescarTabla();
+  }
 }
 
 void MainWindow::on_btnEditar_clicked() {
-  // Integrado en la etapa del diálogo de estudiantes.
-  QMessageBox::information(this, "Editar estudiante",
-                           "El diálogo de estudiantes se integrará en la "
-                           "siguiente etapa.");
+  const QModelIndex actual = ui->tableView->currentIndex();
+  if (!actual.isValid()) {
+    QMessageBox::information(this, "Editar estudiante",
+                             "Selecciona un estudiante de la tabla.");
+    return;
+  }
+  editarFila(actual);
 }
 
 void MainWindow::on_btnAdministradores_clicked() {
@@ -86,9 +90,16 @@ void MainWindow::on_btnAdministradores_clicked() {
 void MainWindow::on_btnRefrescar_clicked() { refrescarTabla(); }
 
 void MainWindow::editarFila(const QModelIndex &index) {
-  Q_UNUSED(index);
-  // Integrado en la etapa del diálogo de estudiantes.
-  QMessageBox::information(this, "Editar estudiante",
-                           "El diálogo de estudiantes se integrará en la "
-                           "siguiente etapa.");
+  const QSqlRecord rec = m_model->record(index.row());
+  StudentDialog dialogo(this);
+  dialogo.setEditData(rec.value("id").toInt(), rec.value("nombre").toString(),
+                      rec.value("apellido").toString(),
+                      rec.value("cedula").toString(),
+                      rec.value("trayecto").toString(),
+                      rec.value("tramo").toString(),
+                      rec.value("seccion").toString(),
+                      rec.value("calificacion"));
+  if (dialogo.exec() == QDialog::Accepted) {
+    refrescarTabla();
+  }
 }

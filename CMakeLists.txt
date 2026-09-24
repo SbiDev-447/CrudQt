@@ -22,6 +22,9 @@ set(PROJECT_SOURCES
         logindialog.cpp
         logindialog.h
         logindialog.ui
+        studentdialog.cpp
+        studentdialog.h
+        studentdialog.ui
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
