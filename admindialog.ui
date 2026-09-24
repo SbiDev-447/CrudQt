@@ -118,6 +118,14 @@
    </item>
   </layout>
  </widget>
- <resources/>
- <connections/>
+<resources/>
+  <connections/>
+  <tabstops>
+   <tabstop>lineUsuario</tabstop>
+   <tabstop>lineClave</tabstop>
+   <tabstop>btnAgregar</tabstop>
+   <tabstop>tableWidget</tabstop>
+   <tabstop>btnEliminar</tabstop>
+   <tabstop>btnCerrar</tabstop>
+  </tabstops>
 </ui>

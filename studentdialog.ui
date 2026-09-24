@@ -299,6 +299,18 @@
    </item>
   </layout>
  </widget>
- <resources/>
- <connections/>
+<resources/>
+  <connections/>
+  <tabstops>
+   <tabstop>lineNombre</tabstop>
+   <tabstop>lineApellido</tabstop>
+   <tabstop>lineCedula</tabstop>
+   <tabstop>comboBoxTrayecto</tabstop>
+   <tabstop>comboBoxTramo</tabstop>
+   <tabstop>comboBoxSeccion</tabstop>
+   <tabstop>checkSinCalificar</tabstop>
+   <tabstop>spinCalificacion</tabstop>
+   <tabstop>btnGuardar</tabstop>
+   <tabstop>btnCancelar</tabstop>
+  </tabstops>
 </ui>

@@ -165,6 +165,12 @@
    </item>
   </layout>
  </widget>
- <resources/>
- <connections/>
+<resources/>
+  <connections/>
+  <tabstops>
+   <tabstop>lineUsuario</tabstop>
+   <tabstop>linePassword</tabstop>
+   <tabstop>btnIngresar</tabstop>
+   <tabstop>btnCancelar</tabstop>
+  </tabstops>
 </ui>
