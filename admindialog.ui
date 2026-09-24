@@ -33,29 +33,45 @@
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QLineEdit" name="lineClave">
-       <property name="echoMode">
-        <enum>QLineEdit::EchoMode::Password</enum>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btnAgregar">
-       <property name="text">
-        <string>Agregar</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <widget class="QLabel" name="labelAyuda">
-     <property name="text">
-      <string>El administrador principal no se puede eliminar.</string>
-     </property>
-    </widget>
-   </item>
+<item>
+       <widget class="QLineEdit" name="lineClave">
+        <property name="echoMode">
+         <enum>QLineEdit::EchoMode::Password</enum>
+        </property>
+        <property name="placeholderText">
+         <string>Contraseña</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnAgregar">
+        <property name="text">
+         <string>Agregar</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnCancelarEdicion">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="visible">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Cancelar</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QLabel" name="labelAyuda">
+      <property name="text">
+       <string>El administrador principal no se puede eliminar ni editar. En modo edición, la contraseña vacía se conserva.</string>
+      </property>
+     </widget>
+    </item>
    <item>
     <widget class="QTableWidget" name="tableWidget">
      <property name="editTriggers">
@@ -97,16 +113,26 @@
        </property>
       </spacer>
      </item>
-     <item>
-      <widget class="QPushButton" name="btnEliminar">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Eliminar admin</string>
-       </property>
-      </widget>
-     </item>
+<item>
+       <widget class="QPushButton" name="btnEditar">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Editar admin</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnEliminar">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Eliminar admin</string>
+        </property>
+       </widget>
+      </item>
      <item>
       <widget class="QPushButton" name="btnCerrar">
        <property name="text">
@@ -120,12 +146,14 @@
  </widget>
 <resources/>
   <connections/>
-  <tabstops>
-   <tabstop>lineUsuario</tabstop>
-   <tabstop>lineClave</tabstop>
-   <tabstop>btnAgregar</tabstop>
-   <tabstop>tableWidget</tabstop>
-   <tabstop>btnEliminar</tabstop>
-   <tabstop>btnCerrar</tabstop>
-  </tabstops>
+<tabstops>
+    <tabstop>lineUsuario</tabstop>
+    <tabstop>lineClave</tabstop>
+    <tabstop>btnAgregar</tabstop>
+    <tabstop>btnCancelarEdicion</tabstop>
+    <tabstop>tableWidget</tabstop>
+    <tabstop>btnEditar</tabstop>
+    <tabstop>btnEliminar</tabstop>
+    <tabstop>btnCerrar</tabstop>
+   </tabstops>
 </ui>
