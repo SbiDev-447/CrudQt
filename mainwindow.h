@@ -33,14 +33,25 @@ public:
   MainWindow(QWidget *parent = nullptr);
   ~MainWindow();
 
+signals:
+  // El usuario pidió cerrar sesión desde el menú de ajustes: main() vuelve a
+  // mostrar el login. Cerrar la ventana con la X NO emite esta señal (eso
+  // termina la app).
+  void cerrarSesion();
+
 private slots:
   void on_btnAgregar_clicked();
   void on_btnEditar_clicked();
-  void on_btnAdministradores_clicked();
   void on_btnRefrescar_clicked();
   void editarFila(const QModelIndex &index);
 
 private:
+  // Abre el diálogo de administradores (acción del menú de ajustes).
+  void abrirAdministradores();
+  // Guarda el tema elegido y lo reaplica en toda la app.
+  void cambiarTema(bool oscuro);
+  // Construye el menú de ajustes y marca el tema activo.
+  void construirMenuAjustes();
   void refrescarTabla();
 
   Ui::MainWindow *ui;

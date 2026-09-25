@@ -5,9 +5,12 @@
 #include "theme.h"
 #include "ui_mainwindow.h"
 
+#include <QAction>
+#include <QActionGroup>
 #include <QColor>
 #include <QHeaderView>
 #include <QItemSelectionModel>
+#include <QMenu>
 #include <QMessageBox>
 #include <QSqlError>
 #include <QSqlRecord>
@@ -134,6 +137,8 @@ MainWindow::MainWindow(QWidget *parent)
             }
           });
 
+  construirMenuAjustes();
+
   refrescarTabla();
 }
 
@@ -167,12 +172,58 @@ void MainWindow::on_btnEditar_clicked() {
   editarFila(actual);
 }
 
-void MainWindow::on_btnAdministradores_clicked() {
+void MainWindow::on_btnRefrescar_clicked() { refrescarTabla(); }
+
+void MainWindow::abrirAdministradores() {
   AdminDialog dialogo(this);
   dialogo.exec();
 }
 
-void MainWindow::on_btnRefrescar_clicked() { refrescarTabla(); }
+void MainWindow::cambiarTema(bool oscuro) {
+  // Persistir y pintar son pasos separados (ver theme.h): primero queda
+  // guardado para el próximo arranque, después se repinta la app entera.
+  guardarTemaOscuro(oscuro);
+  aplicarTema(oscuro);
+}
+
+void MainWindow::construirMenuAjustes() {
+  auto *menu = new QMenu(this);
+
+  // Las dos acciones de tema son excluyentes: un QActionGroup lo garantiza,
+  // no hace falta código extra para desmarcar la anterior.
+  auto *grupoTema = new QActionGroup(menu);
+  grupoTema->setExclusive(true);
+
+  QAction *temaOscuro = menu->addAction(QStringLiteral("Tema oscuro"));
+  temaOscuro->setCheckable(true);
+  QAction *temaClaro = menu->addAction(QStringLiteral("Tema claro"));
+  temaClaro->setCheckable(true);
+  grupoTema->addAction(temaOscuro);
+  grupoTema->addAction(temaClaro);
+
+  menu->addSeparator();
+
+  QAction *accionAdministradores =
+      menu->addAction(QStringLiteral("Administradores..."));
+  QAction *accionCerrarSesion =
+      menu->addAction(QStringLiteral("Cerrar sesión"));
+
+  // La acción marcada es la que está aplicada: se lee una vez de QSettings al
+  // construir el menú (main ya la aplicó antes de mostrar el login).
+  const bool oscuro = temaOscuroGuardado();
+  temaOscuro->setChecked(oscuro);
+  temaClaro->setChecked(!oscuro);
+
+  connect(temaOscuro, &QAction::triggered, this, [this] { cambiarTema(true); });
+  connect(temaClaro, &QAction::triggered, this,
+          [this] { cambiarTema(false); });
+  // Misma función que usaba el botón de la barra: no se duplica la lógica.
+  connect(accionAdministradores, &QAction::triggered, this,
+          &MainWindow::abrirAdministradores);
+  connect(accionCerrarSesion, &QAction::triggered, this, &MainWindow::cerrarSesion);
+
+  ui->btnAjustes->setMenu(menu);
+}
 
 void MainWindow::editarFila(const QModelIndex &index) {
   const QSqlRecord rec = m_model->record(index.row());
