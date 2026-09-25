@@ -1,5 +1,7 @@
 odd/
 .atl/
+.qtcreator/
+
 # --- Build directories de Qt Creator / CMake ---
 
 build/
