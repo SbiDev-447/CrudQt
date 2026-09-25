@@ -30,11 +30,12 @@ QVariant StudentTableModel::data(const QModelIndex &index, int role) const {
       }
       return QString::number(valor.toDouble(), 'f', 1);
     }
-    // "Sin calificar" es un placeholder, no una nota: se atenúa al gray de
-    // Gruvbox para que se lea como ausencia de dato. Con la fila seleccionada
-    // manda el color del QSS (QTableView::item:selected).
+    // "Sin calificar" es un placeholder, no una nota: se atenúa con fg2 de
+    // Gruvbox (contraste 8.6:1, cumple WCAG AA; el gray oficial #928374 queda
+    // por debajo del 4.5:1 sobre el fondo). Con la fila seleccionada manda el
+    // color del QSS (QTableView::item:selected).
     if (role == Qt::ForegroundRole && valor.isNull()) {
-      return QColor(QStringLiteral("#928374"));
+      return QColor(QStringLiteral("#d5c4a1"));
     }
   }
   return QSqlTableModel::data(index, role);
