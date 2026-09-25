@@ -1,14 +1,15 @@
 # CrudQt — CRUD de Estudiantes con Qt y SQLite
 
-Aplicación de escritorio en C++/Qt que registra y consulta estudiantes con sus calificaciones, protegida por un login de administradores. Pensada como proyecto de aprendizaje de Qt: layouts responsivos, modelos SQL, validaciones y control de acceso con roles.
+Aplicación de escritorio en C++/Qt que registra y consulta estudiantes con sus calificaciones, protegida por un login de administradores. Pensada como proyecto de aprendizaje de Qt: layouts responsivos, modelos SQL, validaciones, control de acceso con roles y un tema visual con dos variantes que el usuario elige desde el menú de ajustes.
 
 **Tabla de contenidos**
 1. [Empezar](#empezar)
 2. [Estructura del proyecto](#estructura-del-proyecto)
 3. [Flujo de la aplicación](#flujo-de-la-aplicación)
-4. [Modelo de datos](#modelo-de-datos)
-5. [Reglas de negocio](#reglas-de-negocio)
-6. [Seguridad](#seguridad)
+4. [Apariencia y ajustes](#apariencia-y-ajustes)
+5. [Modelo de datos](#modelo-de-datos)
+6. [Reglas de negocio](#reglas-de-negocio)
+7. [Seguridad](#seguridad)
 
 ---
 
@@ -30,31 +31,54 @@ Credenciales iniciales: **admin / admin** (administrador principal).
 
 | Archivo | Responsabilidad |
 |---------|-----------------|
-| `main.cpp` | Inicializa la BD, muestra el login y luego la ventana principal. |
+| `main.cpp` | Aplica el tema guardado, inicializa la BD y repite el ciclo login → ventana principal mientras el usuario no cierre la app. |
 | `database.h/.cpp` | Abre/migra/siembra la BD (idempotente) y expone `hashPassword()`. |
 | `logindialog.*` | Pantalla de inicio de sesión (validación contra `usuarios`). |
-| `mainwindow.*` | Ventana principal: tabla de estudiantes, botones de acción, modelo `StudentTableModel`. |
+| `mainwindow.*` | Ventana principal: tabla de estudiantes, botones de acción, menú de ajustes, modelo `StudentTableModel`. |
 | `studentdialog.*` | Diálogo agregar/editar estudiante con validaciones. |
 | `admindialog.*` | Gestión de administradores: agregar, editar y eliminar (nunca el principal). |
 | `rowactiondelegate.*` | Delegado que pinta el botón "Editar" en la fila seleccionada de la tabla. |
+| `theme.h/.cpp` | Tema visual: aplica estilo Fusion, la paleta y la hoja de estilos del tema elegido (oscuro o claro). |
+| `style-dark.qss` / `style-light.qss` | Hojas de estilos de cada variante, empaquetadas en el binario por `resources.qrc`. |
 | `CMakeLists.txt` | Build: Qt Widgets + Sql, C++17, AUTOUIC/AUTOMOC/AUTORCC. |
 
 ## Flujo de la aplicación
 
 ```
 main.cpp
-  └─ initDatabase()   → abre BD, crea/migra tablas, siembra admin principal
-  └─ LoginDialog      → valida usuario/password contra SQLite
-  └─ MainWindow       → tabla de estudiantes + acciones
-       ├─ Agregar     → StudentDialog (alta)
-       ├─ Editar      → StudentDialog (edición; también con doble clic o botón de fila)
-       ├─ Administradores → AdminDialog
-       └─ Refrescar   → recarga la tabla
+  └─ aplicarTema(temaOscuroGuardado()) → tema de QSettings aplicado ANTES del login
+  └─ initDatabase()      → abre BD, crea/migra tablas, siembra admin principal
+  └─ while (true)                     ← bucle login → app
+       ├─ LoginDialog   → valida usuario/password contra SQLite
+       └─ MainWindow    → tabla de estudiantes + acciones
+            ├─ Agregar          → StudentDialog (alta)
+            ├─ Editar           → StudentDialog (edición; también con doble clic o botón de fila)
+            ├─ Refrescar        → recarga la tabla
+            └─ Menú Ajustes (QToolButton, esquina superior izquierda)
+                 ├─ Tema oscuro / Tema claro → cambiarTema() y se persiste
+                 ├─ Administradores...      → AdminDialog
+                 └─ Cerrar sesión           → vuelve al login (no cierra la app)
+  └─ cerrar la ventana con la X → termina la aplicación
 ```
 
 - **StudentTableModel** extiende `QSqlTableModel` y añade una **columna virtual "Acciones"** (no existe en la BD) para el botón de edición por fila.
 - **RowActionDelegate** dibuja el botón "Editar" solo en la fila seleccionada; el clic abre el diálogo de edición y el doble clic en cualquier fila también edita.
+- "Cerrar sesión" destruye la ventana principal y vuelve a mostrar el login en la misma instancia del programa; la base de datos sigue abierta y no se reinicializa.
 - Todos los diálogos usan layouts: contenido centrado, `Enter` acepta, `Tab` ordenado, mensajes de error claros.
+
+## Apariencia y ajustes
+
+**Tema visual.** La app usa la paleta Gruvbox en dos variantes con la misma estructura visual: **tema oscuro** (el predeterminado) y **tema claro**. El tema no está atado a ningún widget: se aplica a nivel de aplicación (estilo Fusion + paleta + hoja de estilos), por lo que login, ventana principal y diálogos cambian de aspecto a la vez.
+
+**Menú "Ajustes".** En la esquina superior izquierda de la ventana principal hay un botón **Ajustes** con un menú que agrupa las acciones de sesión:
+
+| Acción | Efecto |
+|--------|--------|
+| Tema oscuro / Tema claro | Cambia el tema al instante. Son excluyentes: la acción marcada es la activa. |
+| Administradores... | Abre `AdminDialog` (gestión de administradores). |
+| Cerrar sesión | Cierra la ventana principal y vuelve a la pantalla de login. |
+
+**Persistencia.** La preferencia se guarda en `QSettings` (organización/aplicación `CrudQt`/`CrudQt`, clave `tema`, valores `dark`/`light`). Si no hay nada guardado, la app arranca con el tema oscuro. El tema elegido se aplica antes de mostrar el login, así que la primera pantalla ya aparece con el tema elegido.
 
 ## Modelo de datos
 
@@ -106,4 +130,7 @@ main.cpp
 - [ ] Agregar estudiante; repetir la misma cédula → la BD rechaza (UNIQUE).
 - [ ] Dejar campos vacíos → la UI avisa y enfoca el campo.
 - [ ] Maximizar la ventana → botones agrupados y tabla repartiendo el ancho.
+- [ ] Ajustes → Tema claro; cerrar y abrir la app → el tema claro se mantiene.
+- [ ] Ajustes → Cerrar sesión → vuelve al login y permite entrar de nuevo.
+- [ ] Cerrar la ventana principal con la X → la aplicación termina.
 - [ ] Borrar `crudqt.db` y abrir la app → se recrea sola con `admin`.

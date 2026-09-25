@@ -8,7 +8,7 @@ Todos los nombres de funciones, métodos, consultas SQL y condiciones citados aq
 
 ## 1. Qué es el sistema
 
-CrudQt es una aplicación de escritorio que registra y consulta estudiantes con sus calificaciones, protegida por un login de administradores con roles. Stack: **Qt 6 / Qt 5.15 (módulos Widgets y Sql), C++17, SQLite y CMake**. Es un proyecto pensado para aprender Qt: en una sola base de código se conectan el patrón **Model/View** (`QSqlTableModel` + `QTableView` + un delegado personalizado), **signal/slot** (auto-conexiones por nombre *y* conexiones manuales), **layouts** creados con Qt Designer, **consultas preparadas** (anti inyección SQL) y **roles de acceso** (administrador normal vs. principal). Además muestra decisiones de diseño que un estudiante debe aprender a razonar: una columna de tabla que **no existe en la base de datos**, un botón por fila que se **pinta condicionalmente** y una base de datos que se **migra sola** sin perder datos.
+CrudQt es una aplicación de escritorio que registra y consulta estudiantes con sus calificaciones, protegida por un login de administradores con roles. Stack: **Qt 6 / Qt 5.15 (módulos Widgets y Sql), C++17, SQLite y CMake**. Es un proyecto pensado para aprender Qt: en una sola base de código se conectan el patrón **Model/View** (`QSqlTableModel` + `QTableView` + un delegado personalizado), **signal/slot** (auto-conexiones por nombre *y* conexiones manuales), **layouts** creados con Qt Designer, **consultas preparadas** (anti inyección SQL), **roles de acceso** (administrador normal vs. principal) y un **tema visual propio** con dos variantes (Gruvbox oscuro y claro) que el usuario cambia en caliente y el sistema recuerda. Además muestra decisiones de diseño que un estudiante debe aprender a razonar: una columna de tabla que **no existe en la base de datos**, un botón por fila que se **pinta condicionalmente**, una base de datos que se **migra sola** sin perder datos y un **ciclo de sesión** donde cerrar sesión no es cerrar la aplicación.
 
 ---
 
@@ -18,26 +18,35 @@ Flujo de arranque y navegación:
 
 ```
 main()
- ├─ initDatabase()                  database.cpp   (abre/crea/migra/siembra la BD)
- ├─ LoginDialog login; login.exec() logindialog.*  (modal; valida credenciales)
- │      └─ validarCredenciales()
- ├─ MainWindow w; w.show()          mainwindow.*   (CRUD de estudiantes)
- │      ├─ StudentTableModel + QTableView          (Model/View)
- │      ├─ RowActionDelegate                       (botón "Editar" por fila)
- │      ├─ StudentDialog                           (alta/edición de estudiantes)
- │      └─ AdminDialog                             (gestión de administradores)
- └─ a.exec()                                      (bucle de eventos)
+ ├─ aplicarTema(temaOscuroGuardado())  theme.*    (tema de QSettings, antes de cualquier widget)
+ ├─ initDatabase()                  database.cpp  (abre/crea/migra/siembra la BD)
+ └─ while (true)                                  (bucle de sesión, solo se repite al cerrar sesión)
+    ├─ LoginDialog login; login.exec() logindialog.*  (modal; valida credenciales)
+    │      └─ validarCredenciales()
+    ├─ MainWindow w                  mainwindow.*   (CRUD de estudiantes)
+    │      ├─ StudentTableModel + QTableView          (Model/View)
+    │      ├─ RowActionDelegate                       (botón "Editar" por fila)
+    │      ├─ StudentDialog                           (alta/edición de estudiantes)
+    │      └─ Menú Ajustes (construirMenuAjustes)
+    │             ├─ Tema oscuro / Tema claro → cambiarTema() → theme.*
+    │             ├─ Administradores...      → AdminDialog
+    │             └─ Cerrar sesión           → emit cerrarSesion()
+    ├─ connect(cerrarSesion) → repetirLogin = true; w.close()
+    ├─ w.show()
+    └─ a.exec()                                   (bucle de eventos; retorna al cerrar la ventana)
+       └─ if (!repetirLogin) break;               (X = salir; cerrar sesión = otro login)
 ```
 
 | Archivo | Rol en el sistema | Conceptos Qt que enseña |
 |---|---|---|
-| `main.cpp` | Orquesta el arranque: BD, login, ventana | `QApplication`, `QDialog::exec()`, vida de la app |
+| `main.cpp` | Orquesta el arranque: tema, BD y bucle login → app | `QApplication`, `QDialog::exec()`, señales entre objetos, control de vida de la app |
 | `database.h/.cpp` | Abre, migra y siembra SQLite (idempotente); `hashPassword()` | `QSqlDatabase`, `QSqlQuery`, `QStandardPaths`, `QCryptographicHash`, ORM manual con SQL crudo |
 | `logindialog.*` | Login contra la tabla `usuarios` | `QDialog` modal, auto-conexiones `on_*`, consultas preparadas |
-| `mainwindow.*` | Ventana principal, tabla de estudiantes | Model/View: `QSqlTableModel` + subclase, `QHeaderView`, delegados por columna |
+| `mainwindow.*` | Ventana principal, tabla de estudiantes y menú de ajustes | Model/View: `QSqlTableModel` + subclase, `QHeaderView`, delegados por columna, `QMenu`, `QActionGroup` |
 | `studentdialog.*` | Alta/edición de estudiantes | Reuso de un diálogo para dos modos (INSERT/UPDATE), validaciones |
 | `admindialog.*` | CRUD de administradores (principal blindado) | `QTableWidget` programático, `Qt::UserRole`, doble capa de protección |
 | `rowactiondelegate.*` | Botón "Editar" en la fila seleccionada | `QStyledItemDelegate`: `paint`, `editorEvent`, señales propias |
+| `theme.h/.cpp` | Tema claro/oscuro: paleta, estilo Fusion y QSS | `QPalette`, `QStyle`, `QFile` + recursos, `QSettings`, `QApplication::setStyleSheet` |
 
 ---
 
@@ -55,7 +64,7 @@ set(CMAKE_AUTORCC ON)   # rcc:  .qrc (recursos) -> qrc_*.cpp
 
 - **AUTOUIC**: cuando compilas `logindialog.cpp` (que incluye `ui_logindialog.h`), CMake detecta `logindialog.ui` y ejecuta **uic**, que convierte el XML en la clase `Ui::LoginDialog` con un método `setupUi()`. Ese `setupUi()` crea los widgets, aplica las propiedades (textos, layouts, `echoMode`, `tabstops`) y, crucialmente, llama a `QMetaObject::connectSlotsByName()`. Por eso **los archivos `.ui` tienen `<connections/>` vacío**: las conexiones de botones no se declaran en Designer, se derivan de los nombres. Si cambias un `.ui` (por ejemplo, añades un campo), uic regenera `ui_*.h` y el compilador lo recoge en el siguiente build.
 - **AUTOMOC**: cualquier header del proyecto que declare `Q_OBJECT` (todos los diálogos, `MainWindow`, `StudentTableModel`, `RowActionDelegate`) necesita que **moc** genere su meta-objeto (`staticMetaObject`), las implementaciones de las señales y el registro de slots para auto-conexión. Sin `Q_OBJECT` no hay `signals:`, no hay `connect` por nombre ni `qobject_cast` sobre esa clase.
-- **AUTORCC**: compila recursos `.qrc`. CrudQt no usa recursos; la línea está por completitud del plantilla.
+- **AUTORCC**: compila recursos `.qrc` y los **embebe en el binario**. En CrudQt no es decorativo: `resources.qrc` empaqueta `style-dark.qss` y `style-light.qss` bajo el prefijo `/styles`, y `theme.cpp` los abre desde `:/styles/style-*.qss`. Así el tema se aplica igual sin importar el directorio de trabajo desde el que se lance la aplicación. El propio `CMakeLists.txt` advierte en un comentario que sin ese archivo los estilos "faltan en silencio".
 
 **Los módulos de Qt** (líneas 12–13):
 
@@ -66,9 +75,9 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Sql)
 
 `find_package` busca Qt, define `QT_VERSION_MAJOR` y crea los targets importados `Qt6::Widgets` y `Qt6::Sql`. **El componente `Sql` es obligatorio**: `QSqlDatabase`, `QSqlQuery` y `QSqlError` viven en el módulo Qt Sql; si solo enlazaras Widgets, el código de `database.cpp` ni siquiera compilaría (headers fuera del include path y enlace faltante). La doble llamada con `Qt${QT_VERSION_MAJOR}` hace el proyecto compilable con Qt 6 o Qt 5.15.
 
-**El target** (líneas 35–56): con Qt 6 se usa `qt_add_executable` con `MANUAL_FINALIZATION`, y al final `qt_finalize_executable` (las líneas 81–83). La finalización diferida es necesaria en plataformas como Android/iOS para ajustar el target *después* de todos los `set_property`; en escritorio es inofensiva pero es el patrón oficial. Con Qt 5 se cae al clásico `add_executable`.
+**El target** (líneas 40–60): con Qt 6 se usa `qt_add_executable` con `MANUAL_FINALIZATION`, y al final `qt_finalize_executable` (las líneas 85–87). La finalización diferida es necesaria en plataformas como Android/iOS para ajustar el target *después* de todos los `set_property`; en escritorio es inofensiva pero es el patrón oficial. Con Qt 5 se cae al clásico `add_executable`.
 
-**`WIN32_EXECUTABLE TRUE`** (línea 71): en Windows produce un ejecutable de subsistema gráfico (sin ventana de consola). En Linux/macOS no tiene efecto práctico. Es la misma propiedad que pone el plantilla de Qt Creator.
+**`WIN32_EXECUTABLE TRUE`** (línea 75): en Windows produce un ejecutable de subsistema gráfico (sin ventana de consola). En Linux/macOS no tiene efecto práctico. Es la misma propiedad que pone la plantilla de Qt Creator.
 
 ---
 
@@ -94,7 +103,9 @@ Paso a paso:
 
 ## 5. El login (logindialog.h/.cpp)
 
-**Cómo se abre**: `LoginDialog` es un `QDialog`. `main.cpp` lo usa con `login.exec()`: un bucle de eventos anidado y modal. El retorno se compara con `QDialog::Accepted`; si el usuario cierra o cancela (`reject()`), el programa termina con `return 0` sin llegar al CRUD.
+**Cómo se abre**: `LoginDialog` es un `QDialog`. `main.cpp` lo usa con `login.exec()`: un bucle de eventos anidado y modal. El retorno se compara con `QDialog::Accepted`; si el usuario cierra o cancela (`reject()`), el `break` sale del bucle de sesión y el programa termina con `return 0` sin llegar al CRUD. Aceptado el login, se crea la ventana principal; si el usuario cierra sesión más tarde, el mismo bucle vuelve a construir **otro** `LoginDialog` (ver sección 7).
+
+**El tema ya está aplicado antes de que exista este diálogo**: `main()` llama a `aplicarTema(temaOscuroGuardado())` antes de construir nada. Por eso el login aparece con el tema elegido sin que este diálogo sepa nada del tema.
 
 **Cómo se conectan los botones**: los slots `on_btnIngresar_clicked` y `on_btnCancelar_clicked` se auto-conectan. La convención es `on_<objectName>_<signal>`, y la magia la hacen dos piezas que vimos en la sección 3: el **moc** registra los slots en el meta-objeto y el `setupUi()` de uic llama a `connectSlotsByName()`, que los cose al `clicked()` de `btnIngresar` y `btnCancelar`. Por eso el `.ui` no declara ninguna conexión.
 
@@ -139,7 +150,7 @@ int StudentTableModel::columnCount(...) const {
 ```
 
 - `columnCount()` devuelve las columnas de la tabla **más una**: la columna "Acciones" (índice 8) **no existe en SQLite**. ¿Por qué funciona? Porque la tabla solo se *consulta* (`select()`): no hay INSERT/UPDATE que deba incluir esa columna.
-- `data()`: para la columna virtual devuelve `QVariant()` (vacío — quién la pinta es el delegado). Para la columna 7 (`calificacion`), si el valor es `NULL` muestra el texto **"Sin calificar"**; si no, el número con un decimal (`QString::number(valor.toDouble(), 'f', 1)`).
+- `data()`: para la columna virtual devuelve `QVariant()` (vacío — quién la pinta es el delegado). Para la columna 7 (`calificacion`), si el valor es `NULL` muestra el texto **"Sin calificar"**; si no, el número con un decimal (`QString::number(valor.toDouble(), 'f', 1)`). Además, cuando esa celda muestra "Sin calificar" y pide `Qt::ForegroundRole`, devuelve `colorTextoSecundario()`: el texto atenuado **del tema activo**, no un color fijo, para que el mismo código sirva en oscuro y en claro (ver sección 7).
 - `headerData()`: el encabezado de esa columna es `"Acciones"` (solo presentación).
 - `flags()`: la columna virtual es `ItemIsEnabled | ItemIsSelectable` — no editable (el clic lo maneja el delegado), pero seleccionable para que la fila entera se seleccione.
 
@@ -149,9 +160,90 @@ int StudentTableModel::columnCount(...) const {
 
 **Un solo camino de edición**: `editarFila(const QModelIndex&)` toma `m_model->record(index.row())`, pasa los 8 campos a `StudentDialog::setEditData()` y, si el diálogo se acepta, refresca. El botón global Editar, el doble clic y el botón de fila **convergen en esta misma ranura**: menos código duplicado, comportamiento idéntico.
 
+**Los botones de la ventana**: el `.ui` coloca tres `QPushButton` (`btnAgregar`, `btnEditar`, `btnRefrescar`) en una fila sobre la tabla y, en la esquina superior izquierda, un `QToolButton` (`btnAjustes`, `popupMode = InstantPopup`) cuyo menú se construye **por código** en `construirMenuAjustes()`. La gestión de administradores **ya no tiene botón en la barra**: se abre desde ese menú (`abrirAdministradores()`). El motivo de que ese menú esté fuera del `.ui` y qué contiene se explica en la sección 7.
+
 ---
 
-## 7. Botón por fila (rowactiondelegate.h/.cpp)
+## 7. Tema visual y menú de ajustes (theme.h/.cpp + mainwindow)
+
+**Idea central: el tema no vive en ningún widget.** No hay un "modo oscuro" que cada pantalla tenga que consultar, ni clases por tema. Hay una función global que reconfigura la aplicación entera de una vez. De esa decisión se derivan casi todas las demás.
+
+### La paleta: una tabla de roles, no una lista de colores
+
+`theme.cpp` define una `struct Tema` en el espacio de nombres anónimo con **roles**, no con nombres de color: `bg0` (fondo base), `bg1` (paneles, campos, filas alternas), `bg2` (headers, botones, tooltips), `bg3` (bordes y handle del scrollbar), `fg0`/`fg1`/`fg2` (texto principal, secundario y atenuado), `gray` (deshabilitados y placeholders) y los acentos `red`, `green`, `yellow`, `blue`, `purple`, `aqua`, `orange`. Hay dos constantes: `kDark` y `kLight`, con los mismos roles y los valores de la paleta oficial **Gruvbox** (en oscuro, `bg0` es `#282828` y `fg0` `#fbf1c7`; en claro se invierten, `bg0` `#fbf1c7` y `fg0` `#282828`).
+
+El beneficio de nombrarlos por rol y no por color: nadie escribe `#282828` en un widget. Si mañana se cambia la paleta, se toca **un** lugar.
+
+### `aplicarTema(bool oscuro)`: tres capas y por qué
+
+```cpp
+app.setStyle(QStringLiteral("Fusion"));   // 1) estilo base
+app.setPalette(pal);                      // 2) paleta: primitivas que el QSS no alcanza
+app.setStyleSheet(QString::fromUtf8(f.readAll()));  // 3) QSS desde el recurso
+```
+
+1. **Fusion** como estilo base: los estilos nativos de cada SO ignoran la `QPalette` en distinto grado (y en macOS ignoran el QSS por completo). Fusion es el único estilo que respeta ambos mecanismos en las tres plataformas, así que el mismo tema se ve igual en todas.
+2. **`QPalette`**: cubre lo que el QSS no alcanza — las primitivas que dibuja Fusion y los widgets que se pintan nativamente. Los roles se mapean a los grupos de Qt: `Window` ← `bg0`, `Base`/`AlternateBase` ← `bg1`, `Button` ← `bg2`, `Mid` ← `bg3`, `Text`/`WindowText`/`ButtonText` ← `fg0`, `PlaceholderText` y los `Disabled` ← `gray`, `ToolTipBase` ← `bg2`, `Link` ← `blue`, `Highlight` ← `aqua` y `BrightText` ← `red`.
+3. **QSS** desde `:/styles/style-*.qss`: resuelve bordes, paddings, radios y estados (`:hover`, `:pressed`, `:disabled`) que la paleta no modela. Vive en el binario gracias a `resources.qrc` (ver sección 3), así que el tema no depende del directorio de trabajo.
+
+**Por qué `Highlight` es `aqua` y no `blue`**: el código elige el acento de selección y el color del texto seleccionado por contraste, no por gusto. En oscuro, `HighlightedText` es `bg0` (7.0:1 sobre `aqua`); en claro es `fg0` (4.7:1), porque `blue` en claro se quedaría en 3.7:1 y no llegaría al mínimo AA. La hoja de estilos replica los valores de la paleta (`style-*.qss` comparte estructura selector a selector) para que Fusion y el QSS pinten lo mismo.
+
+### Persistencia: `QSettings` y por qué no la base de datos
+
+```cpp
+QSettings ajustes() {
+  return QSettings(QString::fromLatin1("CrudQt"), QString::fromLatin1("CrudQt"));
+}
+// valor().value("tema", "dark")  ->  "dark" | "light"
+```
+
+- `temaOscuroGuardado()` **lee** la preferencia; si no hay nada guardado devuelve `true` (tema oscuro). `guardarTemaOscuro(bool)` la **escribe**. Ambas son funciones libres declaradas en `theme.h`.
+- **¿Por qué `QSettings` y no la tabla `usuarios`?** La preferencia es del *entorno de escritorio*, no del dominio: no depende de quién esté conectado, no se migra con la BD y tiene su sitio ya resuelto por Qt en cada SO (`~/.config/CrudQt/CrudQt.conf` en Linux, registro en Windows, plist en macOS). Meterla en SQLite obligaría a consultar la BD solo para pintar un color.
+- **¿Por qué el tema se aplica en `main()` antes de crear nada?** `aplicarTema()` es idempotente y reconfigura la `QApplication` completa, así que el **login** ya aparece con el tema elegido. Si el login se pintara con el tema por defecto y la ventana principal con el guardado, el usuario vería un parpadeo de tema al entrar.
+- **Guardar y pintar están separados a propósito**: `guardarTemaOscuro()` no aplica nada y `aplicarTema()` no guarda nada. Son responsabilidades distintas (persistencia y presentación) y quien cambia el tema en caliente —`MainWindow::cambiarTema(bool)`— hace las dos, en ese orden:
+
+  ```cpp
+  void MainWindow::cambiarTema(bool oscuro) {
+    guardarTemaOscuro(oscuro);
+    aplicarTema(oscuro);
+  }
+  ```
+
+  Así el mismo `aplicarTema()` sirve para el arranque y para el cambio en runtime sin decidir en su nombre si debe escribir en disco.
+- **`colorTextoSecundario()`** expone el `fg2` del tema aplicado (lo fija un `bool` global). La tabla lo usa para atenuar "Sin calificar" sin duplicar colores por tema: el `gray` oficial (`#928374`) se queda en 3.2:1 sobre fondos claros, y `fg2` llega a 8.6:1 en oscuro y 7.8:1 en claro.
+
+### El menú de ajustes: por qué en código y no en el `.ui`
+
+`construirMenuAjustes()` crea un `QMenu` en el constructor de `MainWindow` y se lo asigna a `ui->btnAjustes` con `setMenu()`. Las acciones de tema se declaran `setCheckable(true)` y se registran en un `QActionGroup` con `setExclusive(true)`, de modo que **marcar una desmarca la otra** sin una línea de código adicional: es la semántica de radio resuelta por Qt, no a mano. Al construir el menú se marca la variante activa leyendo `temaOscuroGuardado()` una sola vez, y las tres acciones se conectan con lambdas o ranuras propias.
+
+**¿Por qué no definir el menú en `mainwindow.ui`?** Dos razones, ambas verificables en el código: (1) la acción de tema que aparece marcada depende del valor persistido, y Designer no puede fijar estado en tiempo de ejecución; (2) el `QActionGroup` exclusivo y las conexiones con `connect` (no auto-conexiones) solo se pueden escribir en código. Un menú estático en el `.ui` obligaría además a cablear las conexiones a mano desde el constructor.
+
+Las tres acciones:
+
+| Acción | Ranura / señal | Qué hace |
+|---|---|---|
+| `Tema oscuro` / `Tema claro` | `cambiarTema(bool)` | Persiste y repinta la app entera; exclusivas por `QActionGroup`. |
+| `Administradores...` | `abrirAdministradores()` | Abre `AdminDialog` (sección 10). Es la **misma** función que usaba el botón de la barra: mover el acceso al menú no duplicó lógica. |
+| `Cerrar sesión` | señal `cerrarSesion()` | Pide a `main()` volver al login. |
+
+### Cerrar sesión ≠ cerrar la aplicación
+
+La distinción clave está en `main.cpp` y en el `signals:` de `MainWindow`:
+
+```cpp
+signals:
+  void cerrarSesion();   // cerrar la ventana con la X NO emite esta señal
+```
+
+- `main()` es el **dueño del ciclo de sesión** (el `while (true)`): solo él sabe si toca mostrar otro login o terminar el programa. `MainWindow` no decide su propia muerte, solo **informa** de la intención.
+- Al recibir la señal, el lambda de `main()` pone `repetirLogin = true` y llama a `w.close()`. Como `quitOnLastWindowClosed` está activo, `a.exec()` retorna, el `MainWindow` se destruye al salir del bloque de iteración y el bucle vuelve a construir un `LoginDialog`.
+- **Cerrar con la X no emite la señal**: `a.exec()` retorna, `repetirLogin` sigue en `false` y el bucle hace `break` → `return 0`. La app termina. Un único booleano distingue los dos finales, y por eso la señal tiene que ser distinta del cierre normal.
+- **¿Por qué volver al login en vez de destruir todo y relanzar?** La BD está abierta y sembrada: cerrar sesión es un cambio de *sesión*, no de *proceso*. Reutilizar el mismo proceso mantiene la conexión SQLite, evita volver a migrar y sembrar la base, y conserva el tema aplicado. La alternativa (volver a invocar `main()`) es ilegal en Qt: `QApplication` es una instancia única.
+- La conexión se hace **antes** de `w.show()` a propósito (comentado en el código): si el usuario cerrara sesión nada más abrir, una conexión tardía perdería la señal.
+
+---
+
+## 8. Botón por fila (rowactiondelegate.h/.cpp)
 
 **Respuesta corta: en vez de meter un `QPushButton` real por fila, la columna "Acciones" la pinta un delegado, y solo en la fila seleccionada.** Menos widgets, modelo intacto, cero ruido visual.
 
@@ -164,7 +256,7 @@ int StudentTableModel::columnCount(...) const {
 
 ---
 
-## 8. Alta/edición de estudiantes (studentdialog.h/.cpp)
+## 9. Alta/edición de estudiantes (studentdialog.h/.cpp)
 
 **Un diálogo, dos modos, decidido por `m_id`**: `int m_id = -1` por defecto (alta); `setEditData()` lo cambia a `id >= 1` (edición) y rellena los campos. En edición, además, cambia el título a "Editar estudiante", enfoca el nombre y lo selecciona (`selectAll()`) para sobrescribir rápido.
 
@@ -188,7 +280,7 @@ dup.bindValue(":id", m_id); // -1 en modo agregar: nunca coincide
 
 ---
 
-## 9. Gestión de administradores (admindialog.h/.cpp)
+## 10. Gestión de administradores (admindialog.h/.cpp)
 
 **Un diálogo con dos caras**. El mismo botón `btnAgregar` dice **"Agregar"** en modo alta y **"Guardar"** en modo edición: `iniciarModoEdicion()` cambia `setText("Guardar")`, muestra `btnCancelarEdicion` y cambia el placeholder de la contraseña a "Nueva contraseña" (pista visual de que vacía = conservar). `on_btnAgregar_clicked` despacha: si `m_idEdicion >= 1`, va a `guardarEdicion()`; si no, hace la alta.
 
@@ -214,7 +306,7 @@ del.prepare("DELETE FROM usuarios WHERE id = :id AND rol != 'principal'");
 
 ---
 
-## 10. Reglas de negocio
+## 11. Reglas de negocio
 
 | Regla | Implementación (dónde) |
 |---|---|
@@ -227,29 +319,34 @@ del.prepare("DELETE FROM usuarios WHERE id = :id AND rol != 'principal'");
 | El principal está blindado | UI deshabilita + `UPDATE`/`DELETE` con `rol != 'principal'` + chequeo de `numRowsAffected` |
 | Contraseña vacía al editar = conservar | El UPDATE se construye sin columna `password` (admindialog.cpp:205–211) |
 | BD persistente | Archivo en `AppDataLocation` + sentencias idempotentes; se autorecrea si se borra |
+| El tema se recuerda entre sesiones | `QSettings("CrudQt", "CrudQt")`, clave `tema` = `dark`/`light`; sin valor guardado, tema oscuro (theme.cpp) |
+| Solo un tema activo a la vez | Las dos acciones son `checkable` dentro de un `QActionGroup` exclusivo (`construirMenuAjustes`) |
+| Cerrar sesión ≠ salir de la app | Solo `cerrarSesion()` pone `repetirLogin = true`; la X cierra el bucle con `break` (main.cpp) |
 
 ---
 
-## 11. Seguridad (aprendizaje)
+## 12. Seguridad (aprendizaje)
 
 - **Consultas preparadas en todo el proyecto**: login, chequeos de duplicado, seed, INSERTs, UPDATEs y DELETEs usan `prepare()` + `bindValue()`. Ningún dato del usuario se concatena a SQL. Es la lección de seguridad más importante que deja el código.
 - **Hash sin salt**: SHA-256 hex es correcto para aprender el patrón (guardar derivado, nunca en claro, comparar derivado) pero **no es suficiente para producción**: sin salt, dos usuarios con la misma contraseña tienen el mismo hash y las tablas rainbow aceleran la reversión. Nota educativa: en un sistema real hay que migrar a PBKDF2 (`QPasswordDigestor::deriveKey` en Qt) o Argon2/bcrypt, con salt aleatorio por usuario. El propio README ya hace esta advertencia.
 - **Blindaje doble** del principal: presentación (botones deshabilitados, avisos) + base de datos (`rol != 'principal'` en UPDATE y DELETE). La BD es la última línea y la que decide de verdad.
+- **Contraste del tema, decidido con números, no a ojo**: los comentarios de `theme.cpp` y `style-*.qss` justifican cada color dudoso citando ratios WCAG 2.1 —de ahí que "Sin calificar" use `fg2` y no el `gray` oficial, y que la selección use `aqua` con el texto de más contraste. Lección: un tema oscuro no es "poner los colores al revés", es medir.
 - Límite a conocer: el archivo SQLite se guarda en claro en el directorio de datos del usuario y el driver es el `QSQLITE` estándar; si algún día hubiera datos sensibles habría que cifrarlo (p. ej. SQLCipher), no "esconderlo" en AppDataLocation.
 
 ---
 
-## 12. "Así se hace X" — guiones end-to-end
+## 13. "Así se hace X" — guiones end-to-end
 
 ### (a) Arrancar la aplicación
 
 | Paso | Componente | Qué ocurre |
 |---|---|---|
-| 1 | `main()` → `initDatabase()` | Abre/crea/migra/siembra `crudqt.db`. Si falla, `return 1` |
-| 2 | `LoginDialog login; login.exec()` | Diálogo modal. `on_btnIngresar_clicked` → `validarCredenciales()` (SQL preparado + hash) |
-| 3 | `login.exec() != QDialog::Accepted` | Cancelar o cerrar → `return 0` (la app muere sin CRUD) |
-| 4 | `MainWindow w; w.show()` | Constructor: modelo `estudiantes`, vista, delegado, headers; `refrescarTabla()` al final |
-| 5 | `a.exec()` | Bucle de eventos: la app queda viva hasta cerrar la ventana |
+| 1 | `main()` → `aplicarTema(temaOscuroGuardado())` | Lee `"tema"` de `QSettings` (por defecto `dark`) y aplica Fusion + paleta + QSS: la app entera ya está pintada antes de existir cualquier widget |
+| 2 | `main()` → `initDatabase()` | Abre/crea/migra/siembra `crudqt.db`. Si falla, `return 1` |
+| 3 | `LoginDialog login; login.exec()` | Diálogo modal (ya con el tema aplicado). `on_btnIngresar_clicked` → `validarCredenciales()` (SQL preparado + hash) |
+| 4 | `login.exec() != QDialog::Accepted` | Cancelar o cerrar → `break` del bucle → `return 0` (la app muere sin CRUD) |
+| 5 | `MainWindow w` + `connect` + `w.show()` | Constructor: modelo `estudiantes`, vista, delegado, headers, `construirMenuAjustes()`, `refrescarTabla()`. La conexión a `cerrarSesion` se hace **antes** de `show()` |
+| 6 | `a.exec()` | Bucle de eventos: la app queda viva hasta que se cierre la ventana o se pida cerrar sesión |
 
 ### (b) Agregar un estudiante
 
@@ -272,13 +369,26 @@ del.prepare("DELETE FROM usuarios WHERE id = :id AND rol != 'principal'");
 
 ### (d) Agregar / editar / eliminar un administrador
 
+Se llega desde el menú de ajustes: `btnAjustes` → `Administradores...` → `abrirAdministradores()`.
+
 | Acción | Componente | Qué ocurre |
 |---|---|---|
 | Agregar | `AdminDialog::on_btnAgregar_clicked` (alta) | Valida campos, chequea usuario duplicado, INSERT con rol `'admin'` + `hashPassword`; `refrescarLista()` |
 | Editar | `on_btnEditar_clicked` → `iniciarModoEdicion` → botón "Guardar" → `guardarEdicion()` | No entra si es `principal`; el SQL lleva `rol != 'principal'`; contraseña vacía conserva la actual; `numRowsAffected()==0` → aviso y salida del modo |
 | Eliminar | `on_btnEliminar_clicked` | Bloqueo en UI si es `principal`; confirmación Yes/No; `DELETE ... WHERE id = :id AND rol != 'principal'`; `refrescarLista()` |
 
-### (e) ¿Qué pasa si la base de datos desaparece?
+### (e) Cambiar el tema y cerrar sesión
+
+| Paso | Componente | Qué ocurre |
+|---|---|---|
+| 1 | `btnAjustes` → `Tema claro` | `QActionGroup` exclusivo desmarca "Tema oscuro"; `triggered` → `cambiarTema(false)` |
+| 2 | `MainWindow::cambiarTema` | `guardarTemaOscuro(false)` escribe `"tema" = "light"` en `QSettings`; después `aplicarTema(false)` repinta la app (paleta + `:/styles/style-light.qss`) |
+| 3 | Siguiente arranque | `main()` lee `QSettings` otra vez: el login ya sale en claro, sin preguntar nada |
+| 4 | `btnAjustes` → `Cerrar sesión` | `emit cerrarSesion()`; el lambda de `main()` pone `repetirLogin = true` y hace `w.close()` |
+| 5 | `a.exec()` retorna | `quitOnLastWindowClosed` cierra el bucle de eventos; `repetirLogin == true` → el `while` no hace `break` y reconstruye un `LoginDialog` nuevo |
+| 6 | Login de nuevo | Misma `QApplication`, misma conexión SQLite abierta: entra otro administrador sin volver a sembrar la BD |
+
+### (f) ¿Qué pasa si la base de datos desaparece?
 
 | Paso | Componente | Qué ocurre |
 |---|---|---|
@@ -288,7 +398,7 @@ del.prepare("DELETE FROM usuarios WHERE id = :id AND rol != 'principal'");
 
 ---
 
-## 13. Checklist para el estudiante (autoevaluación)
+## 14. Checklist para el estudiante (autoevaluación)
 
 Antes de dar el proyecto por entendido, intenta responder sin mirar el código:
 
@@ -305,3 +415,7 @@ Antes de dar el proyecto por entendido, intenta responder sin mirar el código:
 - [ ] ¿Por qué el blindaje del principal necesita la capa SQL si la UI ya deshabilita los botones?
 - [ ] ¿Por qué `initDatabase()` puede ejecutarse mil veces sin duplicar el admin? Nombra las tres construcciones SQL que lo garantizan.
 - [ ] Si borras `crudqt.db` mientras la app está abierta y sigues usando la tabla: ¿qué crees que ocurre y por qué la regeneración solo pasa en el arranque? (Pista: `initDatabase()` se llama una sola vez, en `main`.)
+- [ ] ¿Por qué el tema se guarda en `QSettings` y no en la tabla `usuarios`? ¿Qué pasaría si el login se construyera antes de `aplicarTema()`?
+- [ ] ¿Por qué `guardarTemaOscuro()` no aplica el tema y `aplicarTema()` no lo guarda? ¿Quién llama a las dos y en qué orden?
+- [ ] ¿Cómo consigue el menú que "Tema oscuro" y "Tema claro" sean excluyentes sin código que desmarque la anterior? ¿Cómo sabe cuál marcar al abrirse?
+- [ ] Cerrar sesión y cerrar la ventana con la X terminan igual para Qt (`a.exec()` retorna). ¿Qué los diferencia en el código y qué pasaría si `cerrarSesion()` no existiera?
