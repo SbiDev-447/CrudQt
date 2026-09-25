@@ -30,6 +30,9 @@ set(PROJECT_SOURCES
         admindialog.cpp
         admindialog.h
         admindialog.ui
+        theme.cpp
+        theme.h
+        # Sin este archivo los estilos no se empaquetan y faltan en silencio.
         resources.qrc
 )
 

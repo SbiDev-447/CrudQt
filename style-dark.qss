@@ -2,7 +2,8 @@
    CrudQt — Tema Gruvbox dark (material)
    --------------------------------------------------------------------------
    Paleta oficial de Gruvbox (dark, material). Los valores coinciden con los
-   de la QPalette de main.cpp para que Fusion y el QSS pinten lo mismo.
+   de la QPalette de theme.cpp para que Fusion y el QSS pinten lo mismo.
+  (style-light.qss comparte esta estructura selector a selector)
 
      Fondos   bg0 #282828  bg1 #3c3836  bg2 #504945  bg3 #665c54
      Texto    fg0 #fbf1c7  fg1 #ebdbb2  fg2 #d5c4a1  gray #928374
@@ -489,4 +490,46 @@ QMenu::separator {
     height: 1px;
     background-color: #504945;
     margin: 4px 8px;
+}
+
+/* No se estila QMenu::indicator a propósito: en cuanto una regla declara
+   background (aunque sea transparent) el QSS se hace cargo del subcontrol y, sin
+   image, la palomita del item marcado deja de dibujarse. Sin esa regla Fusion
+   la pinta con el color de texto del menú, que ya está tematizado. */
+
+/* --------------------------------------------------------------------------
+   Botones con menú (QToolButton)
+   -------------------------------------------------------------------------- */
+QToolButton {
+    background-color: #504945;
+    color: #ebdbb2;
+    border: 1px solid #665c54;
+    border-radius: 3px;
+    padding: 6px 10px 6px 12px;
+}
+
+QToolButton:hover {
+    background-color: #5b534d;
+    border-color: #928374;
+}
+
+QToolButton:pressed,
+QToolButton:menu-open {
+    background-color: #46413e;
+    border-color: #928374;
+}
+
+QToolButton:disabled {
+    background-color: #3c3836;
+    color: #928374;
+    border-color: #504945;
+}
+
+/* La flecha la dibuja Fusion: se deja su sitio sin fondo ni borde propio. */
+QToolButton::menu-indicator {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 12px;
+    background: transparent;
+    border: none;
 }

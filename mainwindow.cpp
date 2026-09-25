@@ -2,6 +2,7 @@
 #include "admindialog.h"
 #include "rowactiondelegate.h"
 #include "studentdialog.h"
+#include "theme.h"
 #include "ui_mainwindow.h"
 
 #include <QColor>
@@ -30,12 +31,13 @@ QVariant StudentTableModel::data(const QModelIndex &index, int role) const {
       }
       return QString::number(valor.toDouble(), 'f', 1);
     }
-    // "Sin calificar" es un placeholder, no una nota: se atenúa con fg2 de
-    // Gruvbox (contraste 8.6:1, cumple WCAG AA; el gray oficial #928374 queda
-    // por debajo del 4.5:1 sobre el fondo). Con la fila seleccionada manda el
-    // color del QSS (QTableView::item:selected).
+    // "Sin calificar" es un placeholder, no una nota: se atenúa con el texto
+    // secundario (fg2) del tema activo —8.6:1 en dark, 7.8:1 en light— porque
+    // el gray oficial #928374 queda por debajo del 4.5:1 en ambos fondos. Con
+    // la fila seleccionada manda el color del QSS
+    // (QTableView::item:selected).
     if (role == Qt::ForegroundRole && valor.isNull()) {
-      return QColor(QStringLiteral("#d5c4a1"));
+      return colorTextoSecundario();
     }
   }
   return QSqlTableModel::data(index, role);
