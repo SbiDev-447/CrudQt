@@ -1,14 +1,25 @@
 #include "mainwindow.h"
 #include "admindialog.h"
+#include "rowactiondelegate.h"
 #include "studentdialog.h"
 #include "ui_mainwindow.h"
 
 #include <QHeaderView>
+#include <QItemSelectionModel>
 #include <QMessageBox>
 #include <QSqlError>
 #include <QSqlRecord>
 
+int StudentTableModel::columnCount(const QModelIndex &parent) const {
+  // Columna virtual de acciones al final; el SQL de la tabla no cambia.
+  return QSqlTableModel::columnCount(parent) + 1;
+}
+
 QVariant StudentTableModel::data(const QModelIndex &index, int role) const {
+  // La columna virtual de acciones no tiene datos: la pinta el delegado.
+  if (index.column() == columnCount(QModelIndex()) - 1) {
+    return QVariant();
+  }
   // Columna de calificación (índice 7): NULL se muestra como "Sin calificar".
   if (role == Qt::DisplayRole && index.column() == 7) {
     const QVariant valor = QSqlTableModel::data(index, Qt::EditRole);
@@ -18,6 +29,28 @@ QVariant StudentTableModel::data(const QModelIndex &index, int role) const {
     return QString::number(valor.toDouble(), 'f', 1);
   }
   return QSqlTableModel::data(index, role);
+}
+
+QVariant StudentTableModel::headerData(int section, Qt::Orientation orientation,
+                                       int role) const {
+  // Encabezado de la columna virtual de acciones (solo presentación).
+  if (orientation == Qt::Horizontal &&
+      section == columnCount(QModelIndex()) - 1) {
+    if (role == Qt::DisplayRole) {
+      return QStringLiteral("Acciones");
+    }
+    return QVariant();
+  }
+  return QSqlTableModel::headerData(section, orientation, role);
+}
+
+Qt::ItemFlags StudentTableModel::flags(const QModelIndex &index) const {
+  // La columna virtual es solo presentación: no editable (el clic lo maneja el
+  // delegado), pero sí seleccionable para que la fila entera se seleccione.
+  if (index.column() == columnCount(QModelIndex()) - 1) {
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+  }
+  return QSqlTableModel::flags(index);
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -47,7 +80,8 @@ MainWindow::MainWindow(QWidget *parent)
 
   // Las columnas reparten el ancho disponible sin huecos muertos: nombre,
   // apellido, cédula y sección estiran; ID y calificación conservan su ancho
-  // natural; trayecto/tramo quedan en tamaño razonable (ajustable).
+  // natural; trayecto/tramo quedan en tamaño razonable (ajustable); la columna
+  // de acciones (botón Editar) queda compacta al final, sin estirarse.
   QHeaderView *header = ui->tableView->horizontalHeader();
   header->setStretchLastSection(false);
   header->setSectionResizeMode(0, QHeaderView::ResizeToContents); // ID
@@ -58,11 +92,35 @@ MainWindow::MainWindow(QWidget *parent)
   header->setSectionResizeMode(5, QHeaderView::Interactive);      // Tramo
   header->setSectionResizeMode(6, QHeaderView::Stretch);          // Sección
   header->setSectionResizeMode(7, QHeaderView::ResizeToContents); // Calificación
+  header->setSectionResizeMode(8, QHeaderView::ResizeToContents); // Acciones
   header->resizeSection(4, 110); // ancho inicial razonable de Trayecto
   header->resizeSection(5, 80);  // ancho inicial razonable de Tramo
 
   connect(ui->tableView, &QTableView::doubleClicked, this,
           &MainWindow::editarFila);
+
+  // Botón "Editar" en la columna de acciones, visible solo en la fila
+  // seleccionada; el clic reutiliza la misma edición del botón global Editar.
+  const int colAcciones = m_model->columnCount() - 1;
+  auto *delegadoAcciones = new RowActionDelegate(ui->tableView);
+  ui->tableView->setItemDelegateForColumn(colAcciones, delegadoAcciones);
+  connect(delegadoAcciones, &RowActionDelegate::editRequested, this,
+          &MainWindow::editarFila);
+
+  // Al moverse la selección se repinta la columna de acciones: el botón
+  // desaparece de la fila anterior y aparece en la fila nueva.
+  connect(ui->tableView->selectionModel(),
+          &QItemSelectionModel::currentRowChanged, this,
+          [this, colAcciones](const QModelIndex &actual,
+                              const QModelIndex &anterior) {
+            if (anterior.isValid()) {
+              ui->tableView->update(
+                  m_model->index(anterior.row(), colAcciones));
+            }
+            if (actual.isValid()) {
+              ui->tableView->update(m_model->index(actual.row(), colAcciones));
+            }
+          });
 
   refrescarTabla();
 }

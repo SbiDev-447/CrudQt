@@ -17,7 +17,13 @@ class StudentTableModel : public QSqlTableModel {
 
 public:
   using QSqlTableModel::QSqlTableModel;
+  // Una columna virtual más para acciones (no existe en la BD): columnCount()
+  // devuelve las columnas de la tabla más una al final.
+  int columnCount(const QModelIndex &parent = QModelIndex()) const override;
   QVariant data(const QModelIndex &index, int role) const override;
+  QVariant headerData(int section, Qt::Orientation orientation,
+                      int role) const override;
+  Qt::ItemFlags flags(const QModelIndex &index) const override;
 };
 
 class MainWindow : public QMainWindow {
