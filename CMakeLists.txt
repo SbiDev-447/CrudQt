@@ -42,6 +42,12 @@ set(PROJECT_SOURCES
         resources.qrc
 )
 
+# Compilacion cruzada Linux->Windows con LLVM-MinGW (clang): el Qt6EntryPoint
+# espera simbolos dllimport __imp___argc/argv que clang no provee.
+if(CMAKE_CXX_PLATFORM_ID STREQUAL "MinGW" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    list(APPEND PROJECT_SOURCES cmake/win_argc_stub.cpp)
+endif()
+
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(CrudQt
         MANUAL_FINALIZATION

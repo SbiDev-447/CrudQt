@@ -40,6 +40,10 @@ ui_*.h
 *.sqlite
 *.sqlite3
 
+# --- Empaquetado de distribucion (compilacion cruzada) ---
+dist/
+aqtinstall.log
+
 # --- Editores ---
 .vscode/
 .idea/
