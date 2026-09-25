@@ -4,6 +4,7 @@
 #include "studentdialog.h"
 #include "ui_mainwindow.h"
 
+#include <QColor>
 #include <QHeaderView>
 #include <QItemSelectionModel>
 #include <QMessageBox>
@@ -21,12 +22,20 @@ QVariant StudentTableModel::data(const QModelIndex &index, int role) const {
     return QVariant();
   }
   // Columna de calificación (índice 7): NULL se muestra como "Sin calificar".
-  if (role == Qt::DisplayRole && index.column() == 7) {
+  if (index.column() == 7) {
     const QVariant valor = QSqlTableModel::data(index, Qt::EditRole);
-    if (valor.isNull()) {
-      return QStringLiteral("Sin calificar");
+    if (role == Qt::DisplayRole) {
+      if (valor.isNull()) {
+        return QStringLiteral("Sin calificar");
+      }
+      return QString::number(valor.toDouble(), 'f', 1);
     }
-    return QString::number(valor.toDouble(), 'f', 1);
+    // "Sin calificar" es un placeholder, no una nota: se atenúa al gray de
+    // Gruvbox para que se lea como ausencia de dato. Con la fila seleccionada
+    // manda el color del QSS (QTableView::item:selected).
+    if (role == Qt::ForegroundRole && valor.isNull()) {
+      return QColor(QStringLiteral("#928374"));
+    }
   }
   return QSqlTableModel::data(index, role);
 }

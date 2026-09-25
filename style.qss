@@ -1,0 +1,492 @@
+/* ==========================================================================
+   CrudQt — Tema Gruvbox dark (material)
+   --------------------------------------------------------------------------
+   Paleta oficial de Gruvbox (dark, material). Los valores coinciden con los
+   de la QPalette de main.cpp para que Fusion y el QSS pinten lo mismo.
+
+     Fondos   bg0 #282828  bg1 #3c3836  bg2 #504945  bg3 #665c54
+     Texto    fg0 #fbf1c7  fg1 #ebdbb2  fg2 #d5c4a1  gray #928374
+     Acentos  red #fb4934  green #b8bb26  yellow #fabd2f  blue #83a598
+              purple #d3869b  aqua #8ec07c  orange #fe8019
+
+   Los colores derivados se calculan mezclando con los tonos base:
+     bg2 +50% hacia bg3        -> #5b534d  (hover de botón/header)
+     bg2 -50% hacia bg1        -> #46413e  (pressed de botón)
+     yellow +25% hacia fg0     -> #faca55  (hover de botón primario)
+     yellow -15% hacia bg0     -> #dba72e  (pressed de botón primario)
+
+   Criterio de contraste (WCAG 2.1, texto normal >= 4.5:1, grande >= 3:1):
+     fg0 sobre bg0 -> 13.0:1   fg1 sobre bg0 -> 10.8:1
+     fg1 sobre bg1 ->  8.4:1   fg1 sobre bg2 ->  6.4:1
+     bg0 sobre yellow -> 8.7:1 (botón primario)
+     fg0 sobre bg3 ->  5.7:1  <-- selección de fila (elegida sobre blue, 2.4:1)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+QWidget {
+    background-color: #282828;
+    color: #ebdbb2;
+    selection-background-color: #8ec07c;
+    selection-color: #282828;
+}
+
+QDialog,
+QMessageBox {
+    background-color: #282828;
+}
+
+QLabel {
+    background: transparent;
+    color: #ebdbb2;
+}
+
+QToolTip {
+    background-color: #504945;
+    color: #fbf1c7;
+    border: 1px solid #665c54;
+    border-radius: 3px;
+    padding: 4px 6px;
+}
+
+QStatusBar {
+    background-color: #282828;
+    color: #928374;
+    border-top: 1px solid #3c3836;
+}
+
+QStatusBar::item {
+    border: none;
+}
+
+/* --------------------------------------------------------------------------
+   Botones
+   -------------------------------------------------------------------------- */
+QPushButton {
+    background-color: #504945;
+    color: #ebdbb2;
+    border: 1px solid #665c54;
+    border-radius: 3px;
+    padding: 6px 14px;
+}
+
+QPushButton:hover {
+    background-color: #5b534d;
+    border-color: #928374;
+}
+
+QPushButton:pressed {
+    background-color: #46413e;
+    border-color: #665c54;
+}
+
+QPushButton:checked {
+    background-color: #665c54;
+    color: #fbf1c7;
+}
+
+QPushButton:default {
+    border-color: #928374;
+}
+
+/* Deshabilitado: se apaga el fondo y el texto se atenúa a gray. */
+QPushButton:disabled {
+    background-color: #3c3836;
+    color: #928374;
+    border-color: #504945;
+}
+
+/* Botones primarios de acción: el sello Gruvbox, amarillo con texto oscuro.
+   La especificidad del selector por nombre (#) gana sobre QPushButton. */
+#btnIngresar,
+#btnGuardar,
+#btnAgregar {
+    background-color: #fabd2f;
+    color: #282828;
+    border: 1px solid #fabd2f;
+    font-weight: bold;
+}
+
+#btnIngresar:hover,
+#btnGuardar:hover,
+#btnAgregar:hover {
+    background-color: #faca55;
+    border-color: #faca55;
+}
+
+#btnIngresar:pressed,
+#btnGuardar:pressed,
+#btnAgregar:pressed {
+    background-color: #dba72e;
+    border-color: #dba72e;
+}
+
+#btnIngresar:checked,
+#btnGuardar:checked,
+#btnAgregar:checked {
+    background-color: #dba72e;
+    color: #282828;
+}
+
+#btnIngresar:default,
+#btnGuardar:default,
+#btnAgregar:default {
+    border-color: #faca55;
+}
+
+#btnIngresar:disabled,
+#btnGuardar:disabled,
+#btnAgregar:disabled {
+    background-color: #504945;
+    color: #928374;
+    border-color: #665c54;
+}
+
+/* --------------------------------------------------------------------------
+   Campos de entrada
+   -------------------------------------------------------------------------- */
+QLineEdit,
+QSpinBox,
+QDoubleSpinBox,
+QComboBox,
+QPlainTextEdit,
+QTextEdit {
+    background-color: #3c3836;
+    color: #ebdbb2;
+    border: 1px solid #665c54;
+    border-radius: 3px;
+    padding: 5px 8px;
+    selection-background-color: #8ec07c;
+    selection-color: #282828;
+}
+
+/* Foco en aqua: distingue el campo activo de los botones primarios en yellow. */
+QLineEdit:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus,
+QComboBox:focus,
+QPlainTextEdit:focus,
+QTextEdit:focus {
+    border: 1px solid #8ec07c;
+}
+
+QLineEdit:disabled,
+QSpinBox:disabled,
+QDoubleSpinBox:disabled,
+QComboBox:disabled,
+QPlainTextEdit:disabled,
+QTextEdit:disabled {
+    background-color: #3c3836;
+    color: #928374;
+    border-color: #504945;
+}
+
+QLineEdit::placeholder,
+QTextEdit::placeholder {
+    color: #928374;
+}
+
+/* Spinboxes: separador vertical y fondo de los incrementos. La flecha la
+   sigue dibujando Fusion (no se toca QSpinBox::up-arrow / down-arrow). */
+QSpinBox::up-button,
+QSpinBox::down-button,
+QDoubleSpinBox::up-button,
+QDoubleSpinBox::down-button {
+    background-color: #504945;
+    border: none;
+    border-left: 1px solid #665c54;
+    width: 18px;
+}
+
+QSpinBox::up-button:hover,
+QSpinBox::down-button:hover,
+QDoubleSpinBox::up-button:hover,
+QDoubleSpinBox::down-button:hover {
+    background-color: #5b534d;
+}
+
+/* Combobox: franja de la flecha separada del campo. */
+QComboBox {
+    padding-right: 24px;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    background-color: #504945;
+    border: none;
+    border-left: 1px solid #665c54;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+
+QComboBox::drop-down:hover {
+    background-color: #5b534d;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #3c3836;
+    color: #ebdbb2;
+    border: 1px solid #665c54;
+    selection-background-color: #665c54;
+    selection-color: #fbf1c7;
+    outline: none;
+    padding: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Tablas
+   -------------------------------------------------------------------------- */
+QTableView,
+QTableWidget {
+    background-color: #282828;
+    alternate-background-color: #3c3836;
+    color: #ebdbb2;
+    border: 1px solid #504945;
+    gridline-color: #3c3836;
+    /* bg3 en vez de blue: fg0 sobre bg3 da 5.7:1, sobre blue solo 2.4:1. */
+    selection-background-color: #665c54;
+    selection-color: #fbf1c7;
+}
+
+QTableView::item,
+QTableWidget::item {
+    padding: 5px 6px;
+    border: none;
+}
+
+QTableView::item:selected,
+QTableWidget::item:selected {
+    background-color: #665c54;
+    color: #fbf1c7;
+}
+
+/* Fila seleccionada con la vista sin foco: se atenúa pero sigue legible
+   (fg0 sobre bg2 = 7.8:1). */
+QTableView::item:selected:!active,
+QTableWidget::item:selected:!active {
+    background-color: #504945;
+}
+
+QTableView:focus,
+QTableWidget:focus {
+    border: 1px solid #8ec07c;
+}
+
+QHeaderView {
+    background-color: #282828;
+}
+
+QHeaderView::section {
+    background-color: #504945;
+    color: #ebdbb2;
+    padding: 6px 8px;
+    border: none;
+    border-right: 1px solid #665c54;
+    border-bottom: 1px solid #665c54;
+}
+
+QHeaderView::section:hover {
+    background-color: #5b534d;
+    color: #fbf1c7;
+}
+
+QHeaderView::section:vertical {
+    border-right: 1px solid #665c54;
+    border-bottom: none;
+}
+
+QTableCornerButton::section {
+    background-color: #504945;
+    border: none;
+}
+
+/* --------------------------------------------------------------------------
+   Casillas y botones de opción
+   -------------------------------------------------------------------------- */
+QCheckBox,
+QRadioButton {
+    background: transparent;
+    color: #ebdbb2;
+    spacing: 8px;
+}
+
+QCheckBox::indicator,
+QRadioButton::indicator {
+    width: 15px;
+    height: 15px;
+    background-color: #3c3836;
+    border: 1px solid #665c54;
+    border-radius: 3px;
+}
+
+QCheckBox::indicator:hover,
+QRadioButton::indicator:hover {
+    border-color: #8ec07c;
+}
+
+QCheckBox::indicator:checked,
+QRadioButton::indicator:checked {
+    background-color: #fabd2f;
+    border: 1px solid #fabd2f;
+}
+
+QRadioButton::indicator {
+    border-radius: 8px;
+}
+
+QCheckBox::indicator:disabled,
+QRadioButton::indicator:disabled {
+    background-color: #3c3836;
+    border-color: #504945;
+}
+
+QCheckBox:disabled,
+QRadioButton:disabled {
+    color: #928374;
+}
+
+/* --------------------------------------------------------------------------
+   GroupBox, pestañas y progreso
+   -------------------------------------------------------------------------- */
+QGroupBox {
+    background-color: #282828;
+    border: 1px solid #504945;
+    border-radius: 3px;
+    margin-top: 12px;
+    padding-top: 10px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 10px;
+    padding: 0 4px;
+    color: #d5c4a1;
+}
+
+QTabWidget::pane {
+    border: 1px solid #504945;
+    background-color: #282828;
+}
+
+QTabBar::tab {
+    background-color: #3c3836;
+    color: #928374;
+    border: 1px solid #504945;
+    border-bottom: none;
+    padding: 6px 14px;
+}
+
+QTabBar::tab:selected {
+    background-color: #504945;
+    color: #fbf1c7;
+}
+
+QProgressBar {
+    background-color: #3c3836;
+    border: 1px solid #665c54;
+    border-radius: 3px;
+    color: #ebdbb2;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background-color: #b8bb26;
+    border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Barras de desplazamiento discretas
+   -------------------------------------------------------------------------- */
+QScrollBar:vertical {
+    background-color: #282828;
+    width: 12px;
+    margin: 0;
+    border: none;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #665c54;
+    border-radius: 5px;
+    min-height: 28px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #928374;
+}
+
+QScrollBar:horizontal {
+    background-color: #282828;
+    height: 12px;
+    margin: 0;
+    border: none;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #665c54;
+    border-radius: 5px;
+    min-width: 28px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #928374;
+}
+
+/* Sin flechas: el trough vacío ya comunica el recorrido. */
+QScrollBar::add-line,
+QScrollBar::sub-line {
+    width: 0;
+    height: 0;
+    background: none;
+    border: none;
+}
+
+QScrollBar::add-page,
+QScrollBar::sub-page {
+    background: none;
+}
+
+/* --------------------------------------------------------------------------
+   Menús
+   -------------------------------------------------------------------------- */
+QMenuBar {
+    background-color: #282828;
+    color: #ebdbb2;
+}
+
+QMenuBar::item {
+    background: transparent;
+    padding: 5px 10px;
+}
+
+QMenuBar::item:selected {
+    background-color: #3c3836;
+    color: #fbf1c7;
+}
+
+QMenu {
+    background-color: #3c3836;
+    color: #ebdbb2;
+    border: 1px solid #665c54;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 5px 24px 5px 20px;
+}
+
+QMenu::item:selected {
+    background-color: #665c54;
+    color: #fbf1c7;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #504945;
+    margin: 4px 8px;
+}

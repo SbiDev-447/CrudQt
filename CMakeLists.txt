@@ -30,6 +30,7 @@ set(PROJECT_SOURCES
         admindialog.cpp
         admindialog.h
         admindialog.ui
+        resources.qrc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
