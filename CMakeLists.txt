@@ -9,6 +9,12 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# MSVC asume el codepage del sistema (p. ej. Windows-1252): sin /utf-8 los
+# literales con acentos ("Sin calificar", "Administradores...") se rompen.
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Sql)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Sql)
 
