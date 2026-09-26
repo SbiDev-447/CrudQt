@@ -44,7 +44,7 @@ cmake --build build-win -j$(nproc)
 bash deploy-linux-cross.sh
 ```
 
-El resultado es **`dist/CrudQt-win-x86_64.zip`** (13 MB): el usuario descomprime y ejecuta `CrudQt.exe` sin instalar nada. La guía completa —toolchain, empaquetado, verificación y resolución de problemas— está en **[forWindowsBuilt.md](forWindowsBuilt.md)**.
+El resultado es **`dist/CrudQt-win-x86_64.zip`** (13 MB): el usuario descomprime y ejecuta `CrudQt.exe` sin instalar nada. La guía completa —toolchain, empaquetado, verificación y resolución de problemas— está en **[docs/forWindowsBuilt.md](docs/forWindowsBuilt.md)**.
 
 ## Estructura del proyecto
 
