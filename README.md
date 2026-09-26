@@ -11,6 +11,8 @@ Aplicación de escritorio en C++/Qt que registra y consulta estudiantes con sus 
 6. [Modelo de datos](#modelo-de-datos)
 7. [Reglas de negocio](#reglas-de-negocio)
 8. [Seguridad](#seguridad)
+9. [Documentación](#documentación)
+10. [Verificación rápida](#verificación-rápida)
 
 ---
 
@@ -141,6 +143,16 @@ main.cpp
 - **Blindaje en dos capas**: la UI oculta/deshabilita acciones sobre el principal **y** la BD rechaza cualquier `UPDATE`/`DELETE` que lo toque.
 
 > Nota: SHA-256 sin *salt* es suficiente para este proyecto educativo, pero no para producción. Para un sistema real, usa PBKDF2 (`QPasswordDigestor`) o Argon2/bcrypt.
+
+## Documentación
+
+Las tres guías de estudio viven en `docs/`. El README dice **qué hace** el sistema; las guías explican **cómo** y **por qué**.
+
+| Documento | Para qué sirve |
+|---|---|
+| [Explication.md](docs/Explication.md) | Guía de estudio del sistema completo: arquitectura, Model/View, ciclo de construcción con CMake, tema visual, diálogos, ciclo de sesión, reglas de negocio, seguridad y guiones end-to-end. Termina con un checklist de autoevaluación. |
+| [comoArmarTu-DB-EnSQLite.md](docs/comoArmarTu-DB-EnSQLite.md) | Guía de SQLite con el esquema real del proyecto: tablas, tipos y restricciones columna por columna, la distinción `NOT NULL` frente a `NULL` que produce "Sin calificar", el flujo de `initDatabase()`, la migración de la columna `rol`, todas las consultas que la app ejecuta y cómo inspeccionar `crudqt.db` con la CLI o con Qt Creator. |
+| [forWindowsBuilt.md](docs/forWindowsBuilt.md) | Guía para obtener `dist/CrudQt-win-x86_64.zip` desde Linux: toolchain portátil en `~/devtools`, configuración, compilación cruzada, empaquetado, verificación y resolución de problemas. |
 
 ## Verificación rápida
 
