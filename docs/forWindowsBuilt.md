@@ -1,6 +1,6 @@
 # Compilar CrudQt para Windows desde Linux
 
-Guía completa para obtener **`dist/CrudQt-win-x86_64.zip`** (13 MB) desde un equipo Linux, sin Windows, sin VirtualBox y sin instalar nada en el sistema. Quien recibe el zip lo descomprime y ejecuta `CrudQt.exe`: no instala nada, no necesita Qt y no necesita un instalador.
+Guía completa para obtener **`dist/CrudQt-win-x86_64.zip`** (14 MB) desde un equipo Linux, sin Windows, sin VirtualBox y sin instalar nada en el sistema. Quien recibe el zip lo descomprime y ejecuta `CrudQt.exe`: no instala nada, no necesita Qt y no necesita un instalador.
 
 Todo el toolchain (Qt, compilador, `aqtinstall`) vive en `~/devtools`, una carpeta portátil. El sistema no se modifica: no hay paquetes del sistema, ni `~/.local`, ni permisos de root.
 
@@ -31,7 +31,7 @@ Por lo tanto, si en Linux enlazas contra el Qt instalado en `/usr`, obtienes un 
 
 Y hay un tercer requisito, menos evidente: **las herramientas de Qt (moc, uic, rcc) son programas nativos**. `moc` de la instalación de Windows es `moc.exe`, un binario PE que Linux no puede ejecutar. Por eso el paso 1 descarga **dos** instalaciones de Qt: la de Windows (bibliotecas del binario final) y la de Linux (herramientas que se ejecutan durante la compilación).
 
-**Qué se obtiene al terminar:** un zip de 13 MB con el ejecutable, las DLL de Qt, el runtime del compilador y los plugins. El usuario final descomprime y ejecuta; funciona en cualquier Windows x64 con Windows 10 o posterior.
+**Qué se obtiene al terminar:** un zip de 14 MB con el ejecutable, las DLL de Qt, el runtime del compilador y los plugins. El usuario final descomprime y ejecuta; funciona en cualquier Windows x64 con Windows 10 o posterior.
 
 ---
 
@@ -183,19 +183,49 @@ El motivo está en [Resolución de problemas](#resolución-de-problemas).
 bash deploy-linux-cross.sh
 ```
 
-El script staging en `dist/CrudQt/` y genera **`dist/CrudQt-win-x86_64.zip`** (13 MB). Antes de comprimir, verifica que las siete DLL principales estén presentes y aborta si falta alguna.
+El script prepara el staging en `dist/CrudQt/`, comprueba que **todas** las dependencias transitivas estén presentes y genera **`dist/CrudQt-win-x86_64.zip`** (14 MB).
+
+### Por qué el zip lleva dos runtimes de C++
+
+Esta es la parte que más sorprende del empaquetado, así que conviene entenderla antes de tocar el script.
+
+Un ejecutable de Windows declara sus dependencias en la tabla de importaciones PE. `llvm-objdump -p` las muestra sin ambigüedad:
+
+```bash
+~/devtools/llvm-mingw/bin/llvm-objdump -p dist/CrudQt/CrudQt.exe | grep "DLL Name"
+~/devtools/llvm-mingw/bin/llvm-objdump -p dist/CrudQt/Qt6Core.dll  | grep "DLL Name"
+```
+
+La salida es la que sorprende:
+
+| Binario | Runtime de C++ que importa |
+|---|---|
+| `CrudQt.exe` | `libc++.dll`, `libunwind.dll` |
+| `Qt6Core.dll`, `Qt6Gui.dll`, `Qt6Sql.dll`, `Qt6Widgets.dll`, `Qt6Svg.dll` | **`libstdc++-6.dll`**, **`libgcc_s_seh-1.dll`**, `libwinpthread-1.dll` |
+| Todos los plugins (`qwindows`, `qsqlite`, `qsvg`, …) | **`libstdc++-6.dll`**, **`libgcc_s_seh-1.dll`**, `libwinpthread-1.dll` |
+
+**La causa:** hay dos toolchains distintos en juego. `CrudQt.exe` se compila con **LLVM-MinGW**, que está construido sobre **libc++**, de modo que el ejecutable importa `libc++.dll`. En cambio, el Qt que instala `aqtinstall` (`win64_mingw`) fue compilado por Qt con **GCC-MinGW**, de modo que sus DLL importan `libstdc++-6.dll`. No es un error de configuración: es la consecuencia de combinar un compilador clang con un Qt GCC.
+
+**Por qué funciona tener los dos:** los nombres de las bibliotecas no chocan. `libc++.dll` y `libstdc++-6.dll` son archivos distintos, cada uno con sus propios símbolos, y el cargador de Windows resuelve cada importación por su nombre exacto. No hay redefined symbols ni doble inicialización de runtime: conviven sin problema.
+
+**Por qué falló antes:** cuando el zip llevaba solo el runtime de LLVM-MinGW, `CrudQt.exe` arrancaba, cargaba `Qt6Core.dll` y esta pedía `libstdc++-6.dll`. Como no estaba en la carpeta, Windows mostraba `no se encontró libstdc++-6.dll` y la aplicación no llegaba a abrir la ventana. Compilar en Linux sin errores no lo detecta: la comprobación ocurre en la máquina de destino.
+
+> **La lección reutilizable:** cuando el ejecutable y sus bibliotecas vienen de toolchains diferentes, la lista de DLL que hay que empaquetar no se deduce leyendo el enlazado del ejecutable. Hay que preguntar a **cada** binario qué importa. Por eso el script ahora escanea el staging entero en lugar de una lista fija.
 
 ### Contenido del zip
 
 | Archivo | Origen | Para qué |
 |---|---|---|
 | `CrudQt.exe` | `build-win/` | El ejecutable (subsistema gráfico, sin consola). |
-| `Qt6Core.dll`, `Qt6Gui.dll`, `Qt6Sql.dll`, `Qt6Widgets.dll` | `~/devtools/6.8.2/mingw_64/bin/` | Bibliotecas de Qt que importa el ejecutable. |
-| `libc++.dll`, `libunwind.dll`, `libwinpthread-1.dll` | `~/devtools/llvm-mingw/x86_64-w64-mingw32/bin/` | Runtime de C++, desenrollado de excepciones y hilos. |
+| `Qt6Core.dll`, `Qt6Gui.dll`, `Qt6Sql.dll`, `Qt6Widgets.dll`, `Qt6Svg.dll` | `~/devtools/6.8.2/mingw_64/bin/` | Bibliotecas de Qt. `Qt6Svg.dll` la importa el plugin `qsvg`, no el ejecutable. |
+| `libc++.dll`, `libunwind.dll`, `libwinpthread-1.dll` | `~/devtools/llvm-mingw/x86_64-w64-mingw32/bin/` | Runtime de C++ del ejecutable, desenrollado de excepciones e hilos. |
+| `libstdc++-6.dll`, `libgcc_s_seh-1.dll` | `~/devtools/6.8.2/mingw_64/bin/` | Runtime de C++ de Qt y sus plugins (GCC-MinGW). Van **junto** al anterior, no en su lugar. |
 | `plugins/platforms/qwindows.dll` | Qt (Windows) | **Imprescindible**: sin él la aplicación no arranca en Windows. |
 | `plugins/sqldrivers/qsqlite.dll` | Qt (Windows) | Driver de SQLite; sin él no hay base de datos. |
 | `plugins/styles/qmodernwindowsstyle.dll` | Qt (Windows) | Estilo nativo de Windows. |
-| `plugins/imageformats/qgif.dll`, `qico.dll`, `qjpeg.dll`, `qsvg.dll` | Qt (Windows) | Formatos de imagen admitidos por Qt. |
+| `plugins/imageformats/qgif.dll`, `qico.dll`, `qjpeg.dll`, `qsvg.dll` | Qt (Windows) | Formatos de imagen admitidos por Qt. `qsvg` es el que necesita `Qt6Svg.dll`. |
+
+> **Los dos `libwinpthread-1.dll` son el mismo archivo en la práctica:** Qt y LLVM-MinGW incluyen ambos la misma biblioteca de hilos. Se copia la de LLVM-MinGW y basta, porque el nombre con el que la piden los binarios es idéntico.
 
 > **Las DLL `api-ms-win-crt-*` (UCRT) no se copian a propósito.** `CrudQt.exe` las importa (lo confirma `llvm-objdump`), pero Windows 10 y posteriores ya las incluyen en el sistema. Copiarlas al zip solo añadiría peso y riesgo de versiones contradictorias.
 
@@ -227,8 +257,30 @@ Qué debes comprobar en cada salida:
 | Comprobación | Resultado esperado |
 |---|---|
 | `file` | **PE32+ ... (GUI), x86-64**. Si dice ELF, se compiló con el Qt de Linux. |
-| `DLL Name` | Las cuatro `Qt6*.dll` y `libc++.dll` + `libunwind.dll`. |
-| `unzip -l` | Las 21 entradas: ejecutable, 7 DLL, 4 subcarpetas de plugins y sus 7 plugins. |
+| `DLL Name` | Las cinco `Qt6*.dll` y `libc++.dll` + `libunwind.dll`. |
+| `unzip -l` | Las 24 entradas: `CrudQt/`, `plugins/`, 4 subcarpetas de plugins, 11 archivos en la raíz (el ejecutable + 10 DLL) y sus 7 plugins. |
+| Salida del script | `OK <n> binarios escaneados, <n> DLLs empaquetadas, 0 faltantes`. |
+
+### La verificación que hace el script
+
+El paso 4 no se limita a comprobar que las DLL que él mismo copia estén presentes: **escanea cada `.exe` y cada `.dll` del staging** (raíz y todos los `plugins/*/`), le pregunta a `llvm-objdump -p` qué importa, descarta las DLL del sistema de Windows, y falla si alguna dependencia importada no está empaquetada. Si faltan varias, las lista todas antes de salir, para que el error se arregle de una vez.
+
+Es la diferencia entre preguntar *«¿copié lo que yo creo que hace falta?»* y preguntar *«¿qué importa realmente cada binario?»*. La primera pregunta la respondió mal una lista fija de siete DLL: el zip pasó aquella verificación con tres dependencias ausentes, y el error apareció en el Windows de quien recibió el zip.
+
+**Cómo se prueba que la comprobación detecta un fallo.** No basta con borrar una DLL de `dist/CrudQt/` y volver a lanzar el script: este empieza por `rm -rf "$STAGE"` y reconstruye el staging, así que la DLL se vuelve a copiar y la comprobación pasa. Hay que simular el fallo real, que es *«el script se olvidó de esa DLL»*:
+
+```bash
+# 1. Comentar en deploy-linux-cross.sh la línea de cp de la DLL
+#    (por ejemplo la de libstdc++-6.dll) y ejecutar:
+bash deploy-linux-cross.sh
+# ERROR: hay dependencias importadas que no estan en el zip:
+#    - libstdc++-6.dll
+# exit=1
+
+# 2. Deshacer el cambio y volver a lanzar: OK, zip correcto
+```
+
+Ese es exactamente el escenario que rompió en producción, y es la razón de que la comprobación exista. Si el paso 1 **no** produce ese `ERROR`, la verificación está rota aunque el script termine con `exit=0` en el caso bueno.
 
 > **Advertencia honesta:** el `.exe` **no se puede ejecutar en Linux**, así que estos comandos verifican la estructura del binario, no su comportamiento. La prueba real (arranque, login, base de datos) tiene que hacerse en Windows. Lo que sí queda verificado aquí es que el formato, las importaciones y el paquete están completos.
 
@@ -301,6 +353,7 @@ Regla práctica: **una configuración = una carpeta de build**. Cambia el toolch
 - [ ] `~/devtools/6.8.2/mingw_64/bin/Qt6Core.dll` existe (Qt para Windows).
 - [ ] `~/devtools/6.8.2/gcc_64/libexec/moc` existe y **no** es un `.exe` (Qt de host).
 - [ ] `~/devtools/llvm-mingw/x86_64-w64-mingw32/bin/` contiene `libc++.dll`, `libunwind.dll` y `libwinpthread-1.dll`.
+- [ ] `~/devtools/6.8.2/mingw_64/bin/` contiene `libstdc++-6.dll`, `libgcc_s_seh-1.dll` y `Qt6Svg.dll` (el runtime de GCC-MinGW que necesitan Qt y sus plugins, no el ejecutable).
 
 ### Compilación
 
@@ -311,9 +364,10 @@ Regla práctica: **una configuración = una carpeta de build**. Cambia el toolch
 
 ### Paquete
 
-- [ ] `bash deploy-linux-cross.sh` terminó sin `FALTA ...dll`.
-- [ ] `dist/CrudQt-win-x86_64.zip` existe y ronda los 13 MB.
-- [ ] `unzip -l` muestra 21 entradas con `plugins/platforms/qwindows.dll` y `plugins/sqldrivers/qsqlite.dll`.
+- [ ] `bash deploy-linux-cross.sh` terminó con `0 faltantes` (sin `dependencias importadas que no estan en el zip`).
+- [ ] `dist/CrudQt-win-x86_64.zip` existe y ronda los 14 MB.
+- [ ] `unzip -l` muestra 24 entradas con `plugins/platforms/qwindows.dll` y `plugins/sqldrivers/qsqlite.dll`.
+- [ ] El zip incluye `libstdc++-6.dll`, `libgcc_s_seh-1.dll` **y** `Qt6Svg.dll` (los tres que faltaban).
 
 ### En Windows (prueba real, no automatizable desde Linux)
 
