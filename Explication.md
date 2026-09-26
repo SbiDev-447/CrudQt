@@ -66,7 +66,7 @@ set(CMAKE_AUTORCC ON)   # rcc:  .qrc (recursos) -> qrc_*.cpp
 - **AUTOMOC**: cualquier header del proyecto que declare `Q_OBJECT` (todos los diálogos, `MainWindow`, `StudentTableModel`, `RowActionDelegate`) necesita que **moc** genere su meta-objeto (`staticMetaObject`), las implementaciones de las señales y el registro de slots para auto-conexión. Sin `Q_OBJECT` no hay `signals:`, no hay `connect` por nombre ni `qobject_cast` sobre esa clase.
 - **AUTORCC**: compila recursos `.qrc` y los **embebe en el binario**. En CrudQt no es decorativo: `resources.qrc` empaqueta `style-dark.qss` y `style-light.qss` bajo el prefijo `/styles`, y `theme.cpp` los abre desde `:/styles/style-*.qss`. Así el tema se aplica igual sin importar el directorio de trabajo desde el que se lance la aplicación. El propio `CMakeLists.txt` advierte en un comentario que sin ese archivo los estilos "faltan en silencio".
 
-**Los módulos de Qt** (líneas 12–13):
+**Los módulos de Qt** (las dos llamadas a `find_package`, líneas 18–19):
 
 ```cmake
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Sql)
@@ -75,9 +75,9 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Sql)
 
 `find_package` busca Qt, define `QT_VERSION_MAJOR` y crea los targets importados `Qt6::Widgets` y `Qt6::Sql`. **El componente `Sql` es obligatorio**: `QSqlDatabase`, `QSqlQuery` y `QSqlError` viven en el módulo Qt Sql; si solo enlazaras Widgets, el código de `database.cpp` ni siquiera compilaría (headers fuera del include path y enlace faltante). La doble llamada con `Qt${QT_VERSION_MAJOR}` hace el proyecto compilable con Qt 6 o Qt 5.15.
 
-**El target** (líneas 40–60): con Qt 6 se usa `qt_add_executable` con `MANUAL_FINALIZATION`, y al final `qt_finalize_executable` (las líneas 85–87). La finalización diferida es necesaria en plataformas como Android/iOS para ajustar el target *después* de todos los `set_property`; en escritorio es inofensiva pero es el patrón oficial. Con Qt 5 se cae al clásico `add_executable`.
+**El target** (el bloque `if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)`, líneas 51–72): con Qt 6 se usa `qt_add_executable` con `MANUAL_FINALIZATION`, y al final `qt_finalize_executable` (las líneas 97–99). La finalización diferida es necesaria en plataformas como Android/iOS para ajustar el target *después* de todos los `set_property`; en escritorio es inofensiva pero es el patrón oficial. Con Qt 5 se cae al clásico `add_executable`.
 
-**`WIN32_EXECUTABLE TRUE`** (línea 75): en Windows produce un ejecutable de subsistema gráfico (sin ventana de consola). En Linux/macOS no tiene efecto práctico. Es la misma propiedad que pone la plantilla de Qt Creator.
+**`WIN32_EXECUTABLE TRUE`** (línea 87, dentro de `set_target_properties`): en Windows produce un ejecutable de subsistema gráfico (sin ventana de consola). En Linux/macOS no tiene efecto práctico. Es la misma propiedad que pone la plantilla de Qt Creator.
 
 ### Nota: compilar para Windows desde Linux
 
@@ -125,7 +125,7 @@ Paso a paso:
 
 **Cómo se conectan los botones**: los slots `on_btnIngresar_clicked` y `on_btnCancelar_clicked` se auto-conectan. La convención es `on_<objectName>_<signal>`, y la magia la hacen dos piezas que vimos en la sección 3: el **moc** registra los slots en el meta-objeto y el `setupUi()` de uic llama a `connectSlotsByName()`, que los cose al `clicked()` de `btnIngresar` y `btnCancelar`. Por eso el `.ui` no declara ninguna conexión.
 
-**Cómo valida** (`validarCredenciales`, logindialog.cpp:39–53):
+**Cómo valida** (`validarCredenciales`, logindialog.cpp:39–54):
 
 ```cpp
 query.prepare("SELECT id FROM usuarios "
