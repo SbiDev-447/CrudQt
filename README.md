@@ -4,12 +4,13 @@ Aplicación de escritorio en C++/Qt que registra y consulta estudiantes con sus 
 
 **Tabla de contenidos**
 1. [Empezar](#empezar)
-2. [Estructura del proyecto](#estructura-del-proyecto)
-3. [Flujo de la aplicación](#flujo-de-la-aplicación)
-4. [Apariencia y ajustes](#apariencia-y-ajustes)
-5. [Modelo de datos](#modelo-de-datos)
-6. [Reglas de negocio](#reglas-de-negocio)
-7. [Seguridad](#seguridad)
+2. [Compilar para Windows desde Linux](#compilar-para-windows-desde-linux)
+3. [Estructura del proyecto](#estructura-del-proyecto)
+4. [Flujo de la aplicación](#flujo-de-la-aplicación)
+5. [Apariencia y ajustes](#apariencia-y-ajustes)
+6. [Modelo de datos](#modelo-de-datos)
+7. [Reglas de negocio](#reglas-de-negocio)
+8. [Seguridad](#seguridad)
 
 ---
 
@@ -26,6 +27,24 @@ cmake --build build
 Credenciales iniciales: **admin / admin** (administrador principal).
 
 > La base de datos se crea automáticamente en la primera ejecución en `~/.local/share/CrudQt/crudqt.db` (Linux). No se recrea al abrir/cerrar la app; si el archivo se borra, el sistema la vuelve a crear con el admin principal.
+
+## Compilar para Windows desde Linux
+
+Con Qt no se puede reutilizar el Qt del sistema: cada plataforma trae sus binarios (ELF/`.so` en Linux, PE/`.dll` en Windows). Para generar un ejecutable de Windows desde Linux se necesita un compilador que produzca PE (LLVM-MinGW) y un Qt compilado para Windows, además de un Qt de host para ejecutar `moc`, que es un binario PE que Linux no puede lanzar. Todo el toolchain se instala de forma portátil en `~/devtools`, sin tocar el sistema:
+
+```bash
+# 1) Qt de Windows (bibliotecas del exe), Qt de Linux (herramientas) y compilador
+PYTHONPATH=~/devtools/aqt-pylib python3 -m aqt install-qt windows desktop 6.8.2 win64_mingw  -O ~/devtools
+PYTHONPATH=~/devtools/aqt-pylib python3 -m aqt install-qt linux   desktop 6.8.2 linux_gcc_64 -O ~/devtools
+
+# 2) Configurar, 3) compilar, 4) empaquetar
+cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/windows-x86_64.cmake \
+  -DQT_HOST_PATH=$HOME/devtools/6.8.2/gcc_64 -DCMAKE_BUILD_TYPE=Release
+cmake --build build-win -j$(nproc)
+bash deploy-linux-cross.sh
+```
+
+El resultado es **`dist/CrudQt-win-x86_64.zip`** (13 MB): el usuario descomprime y ejecuta `CrudQt.exe` sin instalar nada. La guía completa —toolchain, empaquetado, verificación y resolución de problemas— está en **[forWindowsBuilt.md](forWindowsBuilt.md)**.
 
 ## Estructura del proyecto
 

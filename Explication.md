@@ -79,6 +79,22 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Sql)
 
 **`WIN32_EXECUTABLE TRUE`** (línea 75): en Windows produce un ejecutable de subsistema gráfico (sin ventana de consola). En Linux/macOS no tiene efecto práctico. Es la misma propiedad que pone la plantilla de Qt Creator.
 
+### Nota: compilar para Windows desde Linux
+
+El `CMakeLists.txt` es el mismo para los dos destinos; lo que cambia de una plataforma a otra es **qué Qt y qué compilador** usa CMake, y eso lo decide el *toolchain file*. Añadirlo no altera la receta del proyecto: el código no sabe si se compila en Linux o en Windows.
+
+```cmake
+if(CMAKE_CXX_PLATFORM_ID STREQUAL "MinGW" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    list(APPEND PROJECT_SOURCES cmake/win_argc_stub.cpp)
+endif()
+```
+
+Esta condición es la única parte del build que es específica de la compilación cruzada, y es un buen ejemplo de por qué conviene aislar el caso raro: **se activa solo cuando se cumple exactamente** (plataforma MinGW **y** compilador Clang), de modo que un build nativo de Windows con MSVC —o de Linux con GCC— nunca compila el archivo. El propio CMake suele descartar en silencio una fuente de un lenguaje no habilitado en `project(... LANGUAGES ...)`, así que el archivo es un `.cpp` con `extern "C"` y no un `.c`.
+
+Qt no permite reutilizar el Qt del sistema para el otro sistema operativo: cada plataforma distribuye binarios ya compilados (ELF/`.so` en Linux, PE/`.dll` en Windows). Por eso el proceso necesita **dos** instalaciones de Qt —la de Windows para las bibliotecas del ejecutable y la de Linux para las herramientas que deben ejecutarse durante la compilación— y un compilador capaz de emitir PE, como el clang con triplet de LLVM-MinGW.
+
+El flujo completo (toolchain portátil, configuración, empaquetado en un zip de 13 MB, verificación y resolución de problemas) está en **[forWindowsBuilt.md](forWindowsBuilt.md)**.
+
 ---
 
 ## 4. Inicialización de la base de datos (database.cpp)
