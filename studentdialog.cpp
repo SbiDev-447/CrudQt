@@ -136,6 +136,13 @@ bool StudentDialog::guardar() {
     ok = update.exec();
     if (!ok) {
       mostrarErrorEscritura(this, update.lastError(), cedula);
+    } else if (update.numRowsAffected() == 0) {
+      // exec() devuelve true aunque no se haya afectado ninguna fila: sin esta
+      // comprobación el diálogo se cerraría aparentando un guardado correcto.
+      QMessageBox::warning(this, "No se pudo guardar",
+                            "El estudiante ya no existe. Puede que se haya "
+                            "eliminado en otra ventana.");
+      return false;
     }
   }
   return ok;
